@@ -8,6 +8,7 @@ import discord
 import json
 import requests
 import rpg
+import math
 from rpg import playerList
 from discord import app_commands
 
@@ -455,6 +456,20 @@ async def disconnectPlayer(player: rpg.Player):
         print("(RPG) the game message was lost")
     player.awaitingDeletion = True
     playerList.remove(player)
+
+
+def takeDamage(player: rpg.Player, damage):
+   # if player.stats.armor < 0:
+   #     player.stats.armor = 0
+    damage_reduction = (player.stats.armor + 1) / ((player.stats.armor + 1) + base)
+    player.health -= damage*(1 - damage_reduction)
+def checkPlayerStatus(player: rpg.Player):
+    # make it check and dmg player based on status effects
+    # along with reducing their durations by one
+    if player.stats.health <= 0:
+    # player is ded
+def combatInitiated(player: rpg.Player,hostileEntity):
+    pTurn = True #checks if it's player's turn
 
 
 @tree.command(  # You can guess what this does I think

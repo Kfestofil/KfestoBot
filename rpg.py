@@ -25,13 +25,15 @@ class Player:  # The most important class in the entire game, has all the stuff 
             "int" : 10,
             "spd" : 10,
             "str" : 10,
-            "dex" : 10
+            "dex" : 10,
+            "armor" : 10,
         }
-        self.status = {
-            "alive" : True,
-            "poisoned" : False
+        self.statusEffects = {
+            "poison" : {0,0}, #{duration, damage}
+            "bleed" : {0,0} #{duration, damage}
         }
         self.inventory: list[Item] = []
+
         # Example inventory, still placeholder:
         sword = Item("weapon", "Sword", damage=10, hand_requirement="one-handed")
         helmet = Item("equipment", "Helmet", armor_class=5, slot="head")
