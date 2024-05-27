@@ -346,14 +346,15 @@ async def gameServerLoop():  # the tick value should be the greatest common divi
     tick = 60
     while True:
         await asyncio.sleep(tick)
-        print("(RPG) Spawning mobs...")
-        for x in range(len(mobSpawnMatrix)):
-            for y in range(len(mobSpawnMatrix[0])):
-                if mobSpawnMatrix[x][y] != "none" and "walkable" in Tags[dataMatrix[x][y]["Tile"]] and dataMatrix[x][y]["Entity"] is None:
-                    if count_mobs_in_area(x, y, mob_limit=mobAreaLimit) < mobAreaLimit:
-                        for mobSpawnData in mobSpawnMatrix[x][y]["MobSpawnData"]:
-                            mobType = mobSpawnData.split(':')[0]
-                            spawnRate = int(mobSpawnData.split(':')[1])
-                            if random.randint(1,1000) <= spawnRate:
-                                dataMatrix[x][y]["Entity"] = mobType
-                                break
+        if len(playerList) > 0:
+            print("(RPG) Spawning mobs...")
+            for x in range(len(mobSpawnMatrix)):
+                for y in range(len(mobSpawnMatrix[0])):
+                    if mobSpawnMatrix[x][y] != "none" and "walkable" in Tags[dataMatrix[x][y]["Tile"]] and dataMatrix[x][y]["Entity"] is None:
+                        if count_mobs_in_area(x, y, mob_limit=mobAreaLimit) < mobAreaLimit:
+                            for mobSpawnData in mobSpawnMatrix[x][y]["MobSpawnData"]:
+                                mobType = mobSpawnData.split(':')[0]
+                                spawnRate = int(mobSpawnData.split(':')[1])
+                                if random.randint(1,1000) <= spawnRate:
+                                    dataMatrix[x][y]["Entity"] = mobType
+                                    break
