@@ -19,9 +19,16 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.interaction = interaction  # The discord interaction passes to this class, need to access it later to edit the game message
         self.afkTimer = datetime.datetime.now()
         self.stats = {  # placeholder, we probably doin this next
-            "stat1" : 10,
-            "stat2" : 14,
-            "stat3" : 12,
+            "life" : 100,
+            "mana" : 100,
+            "int" : 10,
+            "spd" : 10,
+            "str" : 10,
+            "dex" : 10
+        }
+        self.status = {
+            "alive" : True,
+            "poisoned" : False
         }
         self.inventory: list[Item] = []
         # Example inventory, still placeholder:
