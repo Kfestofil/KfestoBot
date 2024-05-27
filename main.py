@@ -458,15 +458,15 @@ async def disconnectPlayer(player: rpg.Player):
     playerList.remove(player)
 
 
-def takeDamage(player: rpg.Player, damage):
+def takeDamage(player: rpg.Player, damage, base=100):
    # if player.stats.armor < 0:
    #     player.stats.armor = 0
     damage_reduction = (player.stats.armor + 1) / ((player.stats.armor + 1) + base)
     player.health -= damage*(1 - damage_reduction)
-def checkPlayerStatus(player: rpg.Player):
+#def checkPlayerStatus(player: rpg.Player):
     # make it check and dmg player based on status effects
     # along with reducing their durations by one
-    if player.stats.health <= 0:
+    #if player.stats.health <= 0:
     # player is ded
 def combatInitiated(player: rpg.Player,hostileEntity):
     pTurn = True #checks if it's player's turn
