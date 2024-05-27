@@ -20,17 +20,17 @@ client = discord.Client(intents=intents)
 
 tree = app_commands.CommandTree(client)
 
-Kfestofil: discord.User; Jammmann: discord.User; Brix: discord.User; Huf: discord.User
+Kfestofil: discord.User; Jammmann: discord.User; Brix: discord.User; Huf: discord.User  # declare quick access users
 
 RickRollTimer = datetime.datetime.min
 
 LastDMTimes = {}
 
-ExludedIDs = {472714545723342848}  # EarTensifier
+ExludedIDs = {472714545723342848, 159985870458322944}  # Banned users: EarTensifier, MEE6
 
 
 async def sendStatusUpdate(subjectUser: discord.User, receiver: discord.User, message, mobileActivity, *, mobile=False, DMCooldown = 5):
-    if not mobile:
+    if not mobile:  # Function to send DMs to people based on someone's discord status changing
         if mobileActivity: return
 
     if (datetime.datetime.now() - LastDMTimes[receiver]).seconds > DMCooldown:
@@ -39,24 +39,27 @@ async def sendStatusUpdate(subjectUser: discord.User, receiver: discord.User, me
         try: print(f'Sent {subjectUser.display_name} ONLINE activity update to {receiver.display_name}')
         except: print(f'Sent (UNREGISTERED USER) ONLINE activity update to {receiver.display_name}, are you sure the bot is logged in?)')
 
+
 async def sendLeagueUpdate(subjectUser: discord.User, receiver: discord.User, message, *, DMCooldown = 5):
-    if (datetime.datetime.now() - LastDMTimes[receiver]).seconds > DMCooldown:
+    if (datetime.datetime.now() - LastDMTimes[receiver]).seconds > DMCooldown:  # Function to send someone DMs based on someone's activity becoming League
         LastDMTimes[receiver] = datetime.datetime.now()
         await receiver.send(message)
         try: print(f'Sent {subjectUser.display_name} LEAGUE activity update to {receiver.display_name}')
         except: print(f'Sent (UNREGISTERED USER) LEAGUE activity update to {receiver.display_name}, are you sure the bot is logged in?)')
 
-async def timerGoOff(message: str, interval: int, channel, repeat: int):
+
+async def timerGoOff(message: str, interval: int, channel, repeat: int):  # /Timer command function
     for x in range(repeat):
         await asyncio.sleep(interval)
         await channel.send(message)
 
-@client.event
-async def on_ready():
-    await tree.sync()
-    print(f'We have logged in as {client.user}')
-    global Kfestofil
 
+@client.event  # Basically Initialize function for the entire bot
+async def on_ready():
+    await tree.sync()  # Sync the commands to discord
+    print(f'We have logged in as {client.user}')  # log in as the bot user
+
+    global Kfestofil  # Get and set the quick access users
     global Jammmann
     global Brix
     global Huf
@@ -65,6 +68,7 @@ async def on_ready():
     Jammmann = client.get_user(612005206867050503)
     Brix = client.get_user(852612267693441064)
     Huf = client.get_user(448145391154626575)
+
     LastDMTimes.update({
         Kfestofil: datetime.datetime.min,
         Jammmann: datetime.datetime.min,
@@ -72,13 +76,12 @@ async def on_ready():
     })
 
 @client.event
-async def on_message(message: discord.Message):
-    if message.author.id in ExludedIDs:
-        return
+async def on_message(message: discord.Message):  # Fires on all messages in all servers
+    if message.author.id in ExludedIDs or message.author == client.user:
+        return  # return when user is banned, or self
 
-
-    DM = False
-    try: servername = message.guild.name
+    DM = False  # gotta create this to prevent unknown server errors
+    try: servername = message.guild.name  # Get and set all the essential variables
     except:
         servername = "DM"
         DM = True
@@ -93,10 +96,7 @@ async def on_message(message: discord.Message):
         files.append(f)
     print(f'({servername}) {author.display_name}: {content}')
 
-    if author == client.user:
-        return
-
-    # Handling rpg inputs
+    # Handling rpg inputs  # Old way to handle the inputs
     # for plr in playerList:
     #     if author.id == plr.ID and len(content) <= 6 and re.match('^[awsd]+$', content):
     #         await rpgInput(content, plr)
@@ -105,6 +105,7 @@ async def on_message(message: discord.Message):
     #     break
     #
 
+    # Dumb stuff:
     if author == Brix:
         await message.delete()
         await channel.send(content, files=files, reference=repliedto)
@@ -129,8 +130,7 @@ async def on_message(message: discord.Message):
         await channel.send("Hello :D", reference=message)
 
 
-
-@client.event
+@client.event  # Basically a spying software xd
 async def on_message_edit(messageA: discord.Message, messageB: discord.Message):
     if messageA.author.id in ExludedIDs:
         return
@@ -148,7 +148,8 @@ async def on_message_edit(messageA: discord.Message, messageB: discord.Message):
     print(f'({servername}) {author.display_name} edited: {contentA} to: {contentB}')
     await channel.send(f'{author.mention} edited: `{contentA}` to: `{contentB}`')
 
-@client.event
+
+@client.event  # Handle the updates for sendStatusUpdate() and sendLeagueUpdate()
 async def on_presence_update(memberA: discord.Member, memberB: discord.Member):
     if memberA.id in ExludedIDs:
         return
@@ -162,7 +163,7 @@ async def on_presence_update(memberA: discord.Member, memberB: discord.Member):
     global Jammmann
     global Brix
 
-    try:
+    try:  # No I'm not spying on my friends...
         if memberA.id == Jammmann.id:
             if statusA == discord.Status.offline and statusB == discord.Status.online:
                 await sendStatusUpdate(Jammmann, Kfestofil, "Father, I bring thy news of Jamm becoming online!", mobileActivity)
@@ -191,7 +192,7 @@ async def on_presence_update(memberA: discord.Member, memberB: discord.Member):
     except NameError: print("STOP CHANGING PRESENCE I NEED TO WAKE UP FIRST")
 
 
-@tree.command(
+@tree.command(  # Test command
     name="beat_up_children",
     description="Beats up some children"
 )
@@ -200,6 +201,7 @@ async def beatupchildren(interaction: discord.Interaction):
         return
     await interaction.response.send_message("Die children!")
     print(interaction.user .display_name + " has used the \"Beat up children\" command!")
+
 
 @tree.command(
     name="send_message",
@@ -221,6 +223,7 @@ async def senddmmessage(interaction: discord.Interaction, user: str, message: st
         await interaction.response.send_message(f'YO, {interaction.user.mention} just tried to send \"{message}\" '
                                                 f'to {realuser.display_name} using ME, because they can\'t fucking read'
                                                 f' the prompt that says only KFESTOFIL can send messages using me >:(')
+
 
 @tree.command(
     name="rickroll_kfestofil",
@@ -245,6 +248,7 @@ async def rickrollkfestofil(interaction: discord.Interaction):
                                                 f'{((3600 - (datetime.datetime.now() - RickRollTimer).seconds) / 60).__ceil__()} '
                                                 f'minutes until you can rickroll Kfestofil again!', ephemeral=True)
 
+
 @tree.command(
     name="cat",
     description="Gives you a random picture of a cat"
@@ -257,6 +261,7 @@ async def cat(interaction: discord.Interaction):
     caturl = httparray[0]["url"]
     print("Sent a cat pic :3")
     await interaction.response.send_message(f'{caturl}')
+
 
 @tree.command(
     name="get_message_history",
@@ -286,6 +291,7 @@ async def getmessagehistory(interaction: discord.Interaction, user: str, limit: 
         print(f'{interaction.user.display_name} just tried to access message history with {realuser.display_name}')
         await interaction.response.send_message(f'You really just tried that?', ephemeral=True)
 
+
 @tree.command(
     name="timer",
     description="Sets a timer to send a message in this channel (will say who set the timer)"
@@ -297,9 +303,10 @@ async def set_timer(interaction: discord.Interaction, message: str, *, hours: in
                      abs(hours) * 3600 + abs(minutes) * 60 + abs(seconds),
                      interaction.channel, repeat)
 
+
 @tree.command(
     name="delete_msg",
-    description="Deletes the chosen message (will only work for Kfestofil)"
+    description="WILL ONLY WORK FOR KFESTOFIL. Deletes the chosen message"
 )
 async def delete_msg(interaction: discord.Interaction, id: str):
     if interaction.user == Kfestofil:
@@ -313,14 +320,16 @@ async def delete_msg(interaction: discord.Interaction, id: str):
         await interaction.response.send_message("Sorry, this only works for Kfesto... You dumb fuck.", ephemeral=True)
 
 
-# CODE FOR RUNNING RPG
+# CODE FOR RUNNING RPG, that's where you shine, Huf
 class RpgMainButtons(discord.ui.View):
+    # This is the class that shows all the buttons visible when the actual map is rendered.
+    # This is what handles the inputs
     def __init__(self, player: rpg.Player, speed=1,timeout=300):
         super().__init__(timeout=timeout)
         self.player = player
         self.speed = speed
 
-    @discord.ui.button(label='X1', style=discord.ButtonStyle.green, row=0)
+    @discord.ui.button(label='X1', style=discord.ButtonStyle.green, row=0)  # Speed up button
     async def ButtonX2(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.speed == 1:
             self.speed = 2
@@ -334,23 +343,23 @@ class RpgMainButtons(discord.ui.View):
         elif self.speed == 4:
             self.speed = 1
             button.label = 'X1'
-        await interaction.response.edit_message(view=self)
+        await interaction.response.edit_message(view=self)  # when we edit message and only provide the view, we change button labels basically
         resetAFKTimeout(self.player)
 
     @discord.ui.button(label='Up', style = discord.ButtonStyle.blurple , row=0)
     async def ButtonW(self, interaction: discord.Interaction, button:discord.ui.Button):
-        await interaction.response.defer()
+        await interaction.response.defer()  # always remember to defer interaction responses when you don't do anything with the response message
         for i in range(self.speed):
             rpg.playerMove('w', self.player)
         await updateRender(self.player)
 
-    @discord.ui.button(label='Interact', style=discord.ButtonStyle.green, row=0)
+    @discord.ui.button(label='Interact', style=discord.ButtonStyle.green, row=0)  # placeholder
     async def ButtonE(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         print('xd')
         resetAFKTimeout(self.player)
 
-    @discord.ui.button(label='Menu', style=discord.ButtonStyle.green, row=0)
+    @discord.ui.button(label='Menu', style=discord.ButtonStyle.green, row=0)  # please use the menu windows naming scheme from rpg.py player class
     async def ButtonESC(self, interaction: discord.Interaction, button: discord.ui.Button):
         msg = await self.player.interaction.original_response()
         await interaction.response.defer()
@@ -383,7 +392,7 @@ class RpgMainButtons(discord.ui.View):
             rpg.playerMove('d', self.player)
         await updateRender(self.player)
 
-    @discord.ui.button(label='Map', style=discord.ButtonStyle.green, row=1)
+    @discord.ui.button(label='Map', style=discord.ButtonStyle.green, row=1)  # please use the menu windows naming scheme from rpg.py player class
     async def ButtonM(self, interaction: discord.Interaction, button: discord.ui.Button):
         msg = await self.player.interaction.original_response()
         await interaction.response.defer()
@@ -394,9 +403,11 @@ class RpgMainButtons(discord.ui.View):
             self.player.screen = "main"
             await updateRender(self.player)
         resetAFKTimeout(self.player)
-# BUTTONS FOR MAIN GAME
+
 
 async def updateRender(player: rpg.Player):
+    # Updates the message with the current screen,
+    # call everytime when the view should update
     msg = await player.interaction.original_response()
     if player.screen == "main":
         await msg.edit(content=rpg.render(rpg.prepareRender(player)), embed=None)
@@ -406,7 +417,7 @@ async def updateRender(player: rpg.Player):
         await msg.edit(content=rpg.render(rpg.prepareRender(player)), embed=rpg.menu1(player))
 
 
-async def refreshRenderLoop(player: rpg.Player):
+async def refreshRenderLoop(player: rpg.Player):  # SHOULD NOT BE CALLED ANYWHERE BESIDES THE JOIN FUNCTION
     while abs((datetime.datetime.now() - player.afkTimer).seconds) < 300:
         if not player.awaitingDeletion:
             await updateRender(player)
@@ -418,7 +429,7 @@ async def refreshRenderLoop(player: rpg.Player):
         print(f"(RPG) Killed {player.interaction.user.display_name} for afk")
         await disconnectPlayer(player)
 
-# async def rpgInput(inputStr: str, player: rpg.Player):
+# async def rpgInput(inputStr: str, player: rpg.Player):  # Old way to handle inputs
 #     for c in inputStr:
 #         if c == 'w': rpg.playerMove('w', player)
 #         elif c == 'a': rpg.playerMove('a', player)
@@ -427,10 +438,13 @@ async def refreshRenderLoop(player: rpg.Player):
 #     await updateRender(player)
 
 
-def resetAFKTimeout(player: rpg.Player):
+def resetAFKTimeout(player: rpg.Player):  # Call this everytime player does something to prevent random disconnects
     player.afkTimer = datetime.datetime.now()
 
+
 async def disconnectPlayer(player: rpg.Player):
+    # Call when you want to disconnect player, handles everything for you
+    # MAKE SURE TO NOT CALL THIS AS A RESULT OF THE Player.awaitingDeletion TAG TO PREVENT LOOPS
     rpg.dataMatrix[player.position[0]][player.position[1]]["Entity"] = None
     try:
         msg = await player.interaction.original_response()
@@ -441,25 +455,25 @@ async def disconnectPlayer(player: rpg.Player):
     playerList.remove(player)
 
 
-@tree.command(
+@tree.command(  # You can guess what this does I think
     name="rpg_join",
     description="TESTING, ONLY FOR THE RPG MAKING TEAM"
 )
 async def rpg_join(interaction: discord.Interaction):
-    await interaction.response.send_message("Joining...", ephemeral=True)
-    if interaction.user == Kfestofil or interaction.user == Huf or interaction.user == Jammmann:
+    await interaction.response.send_message("Joining...", ephemeral=True)  # loading message
+    if interaction.user == Kfestofil or interaction.user == Huf or interaction.user == Jammmann:  # allowed users
         playerID = interaction.user.id
         new = True
         for pl in playerList:
-            if pl.ID == playerID: new = False
+            if pl.ID == playerID: new = False  # make sure they can join only once
         if new:
             player = rpg.Player(playerID, interaction)
             playerList.append(player)
-            v = RpgMainButtons(player)
+            v = RpgMainButtons(player)  # initial message view (buttons)
             msg = await player.interaction.original_response()
-            await msg.edit(view=v)
+            await msg.edit(view=v)  # Add buttons to the response message
             print(f"(RPG) {interaction.user.display_name} joined the game")
-            await refreshRenderLoop(player)
+            await refreshRenderLoop(player)  # Start updating the render every 1s, never call this
         else:
             msg = await interaction.original_response()
             await msg.edit(content="You already have a game session running, "
@@ -468,14 +482,14 @@ async def rpg_join(interaction: discord.Interaction):
                              "command")
 
 
-@tree.command(
+@tree.command(  # Command for a player to terminate the current session
     name="rpg_leave",
     description="TESTING, ONLY FOR THE RPG MAKING TEAM"
 )
 async def rpg_leave(interaction: discord.Interaction):
     print(playerList)
     playerID = interaction.user.id
-    was = False
+    was = False  # The thing checking if you were there in the first place
     for pl in playerList:
         if pl.ID == playerID:
             await disconnectPlayer(pl)
@@ -487,3 +501,6 @@ async def rpg_leave(interaction: discord.Interaction):
 #
 
 client.run(os.environ["DISCORD_API_KEY"])
+# Run the bot, make sure this is always at the end of the file,
+# add your API key to the system environment variables under the DISCORD_API_KEY variable,
+# DO NOT put your API key in here as a string or I will literally make your bot delete the servers it's in :)

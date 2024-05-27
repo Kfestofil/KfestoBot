@@ -4,33 +4,34 @@ from PIL import Image
 from discord import Interaction
 from discord import embeds
 
-class Player:
-    def __init__(self, discordID: int, interaction: Interaction, position = [256,256]):
+
+class Player:  # The most important class in the entire game, has all the stuff related to a player in the game
+    def __init__(self, discordID: int, interaction: Interaction, position = [256,256]):  # default pos is 256,256
         self.screen = "main"  # main, menu[1,2,...], map
         self.awaitingDeletion = False
         self.ID = discordID
         self.position = [0,0]
-        self.position[0] = position[0] + 7
+        self.position[0] = position[0] + 7  # Those are here because of the border adding by ChatGPT™
         self.position[1] = position[1] + 7
-        while dataMatrix[self.position[0]][self.position[1]]["Entity"] is not None:
-            self.position = [random.randint(253,259),random.randint(253,259)]
-        dataMatrix[self.position[0]][self.position[1]]["Entity"] = self
-        self.interaction = interaction
+        while dataMatrix[self.position[0]][self.position[1]]["Entity"] is not None:  # Do not spawn on other players
+            self.position = [random.randint(253,259),random.randint(253,259)]  # This forgets about the set (if set) position... fix at some point
+        dataMatrix[self.position[0]][self.position[1]]["Entity"] = self  # Basically tell the game he's there
+        self.interaction = interaction  # The discord interaction passes to this class, need to access it later to edit the game message
         self.afkTimer = datetime.datetime.now()
-        self.stats = {
+        self.stats = {  # placeholder, we probably doin this next
             "stat1" : 10,
             "stat2" : 14,
             "stat3" : 12,
         }
         self.inventory: list[Item] = []
-        # Example usage:
+        # Example inventory, still placeholder:
         sword = Item("weapon", "Sword", damage=10, hand_requirement="one-handed")
         helmet = Item("equipment", "Helmet", armor_class=5, slot="head")
         potion = Item("consumable", "Health Potion", effect="heal", duration=5)
         self.inventory.extend([sword, helmet, potion])
 
 
-class Item:
+class Item:  # The Item class, use it when adding stuff to player inv
     def __init__(self, item_type: str, name: str, **kwargs):
         self.item_type = item_type
         self.name = name
@@ -52,7 +53,7 @@ class Item:
                     setattr(self, attr, None)
 
 
-Tiles = {
+Tiles = {  # Dict containing the color mapping to the tile names
     "199a0d" : "grass",
     "37c5ff" : "water_passable",
     "209cce" : "water_impassable",
@@ -81,7 +82,7 @@ Tiles = {
 
 Colors = {v: k for k, v in Tiles.items()}  # reversed Colors dict
 
-Tags = {
+Tags = {  # Dict containing the tags set for each tile, currently only the walkable/not_walkable tags exist
     "grass" : {"walkable",},
     "water_passable" : {"walkable",},
     "water_impassable" : {"not_walkable",},
@@ -108,7 +109,7 @@ Tags = {
     "horse" : {"not_walkable",},
 }
 
-Emotes = {
+Emotes = {  # Dict that has all the tiles and their emotes mapped to them
     "grass" : "🟩",
     "water_passable" : "🟦",
     "water_impassable" : "🌊",
@@ -133,12 +134,12 @@ Emotes = {
     "target" : "🎯",
     "corn" : "🌽",
     "horse" : "🐴",
-
+    # Entity tiles:
     "other_player" : ":neutral_face:",
     "player" : ":grinning:",
 }
 
-Directions = {
+Directions = {  # the buttons pass w,a,s,d strings instead of inputs cuz im lazy
     'w' : [0, -1],
     's' : [0, 1],
     'a' : [-1,0],
@@ -146,7 +147,7 @@ Directions = {
 }
 
 
-def add_border_to_matrix(dataMatrix):
+def add_border_to_matrix(dataMatrix):  # ChatGPT™
     # Determine the original dimensions of the dataMatrix
     original_height = len(dataMatrix[0])      # Number of rows (y-coordinate or height)
     original_width = len(dataMatrix)    # Number of columns (x-coordinate or width)
@@ -165,7 +166,8 @@ def add_border_to_matrix(dataMatrix):
 
     return new_matrix
 
-def loadMapFile(file: str, realMap: bool):
+
+def loadMapFile(file: str, realMap: bool):  # Loads a map file into a dataMatrix, realMap only makes it so the border ain't added
     tempImg = Image.open(file)
     dimensions = tempImg.size
     mapImg = tempImg.load()
@@ -197,7 +199,7 @@ miniMatrix = loadMapFile('miniMap.bmp', False)
 playerList: list[Player] = []
 
 
-def playerMove(direction: str, player: Player):
+def playerMove(direction: str, player: Player):  # good luck figuring this out
     player.afkTimer = datetime.datetime.now()
     newpos = [player.position[0] + Directions[direction][0], player.position[1] + Directions[direction][1]]
     if "walkable" in Tags[dataMatrix[newpos[0]][newpos[1]]["Tile"]] and dataMatrix[newpos[0]][newpos[1]]["Entity"] is None:
@@ -206,7 +208,7 @@ def playerMove(direction: str, player: Player):
         dataMatrix[player.position[0]][player.position[1]]["Entity"] = player
 
 
-def prepareRender(player: Player):
+def prepareRender(player: Player):  # Prepares render, basically a 13x13 grid of tiles to render
     posX = player.position[0]
     posY = player.position[1]
     startX = posX - 6
@@ -229,7 +231,7 @@ def prepareRender(player: Player):
     return viewport
 
 
-def miniPrepareRender(player: Player):
+def miniPrepareRender(player: Player):  # Prepares minimap render
     relativeX = round(player.position[0] / (512 + 14) * 12)
     relativeY = round(player.position[1] / (512 + 14) * 12)
     viewport = [[0 for i in range(13)] for j in range(13)]
@@ -240,7 +242,8 @@ def miniPrepareRender(player: Player):
             viewport[x][y] = tile
     return viewport
 
-def render(viewport = []):
+
+def render(viewport = []):  # Renders a prepareRender viewport, basically a string to send as a message on discord
     text = ''
     for y in range(13):
         for x in range(13):
@@ -249,7 +252,7 @@ def render(viewport = []):
     return text
 
 
-def menu1(player: Player):
+def menu1(player: Player):  # Returns a discord embed for the menu1 screen (Character menu rn)
     stats = ''
     inventory = ''
     for stat in player.stats.keys():
