@@ -75,6 +75,8 @@ async def on_ready():
         Brix: datetime.datetime.min
     })
 
+    asyncio.create_task(rpg.gameServerLoop())  # This runs the loop for mob spawning etc. No need to await this we leave it
+
 @client.event
 async def on_message(message: discord.Message):  # Fires on all messages in all servers
     if message.author.id in ExludedIDs or message.author == client.user:

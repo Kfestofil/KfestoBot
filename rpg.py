@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import random
 from PIL import Image
@@ -14,7 +15,7 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.position[0] = position[0] + 7  # Those are here because of the border adding by ChatGPT™
         self.position[1] = position[1] + 7
         while dataMatrix[self.position[0]][self.position[1]]["Entity"] is not None:  # Do not spawn on other players
-            self.position = [random.randint(253,259),random.randint(253,259)]  # This forgets about the set (if set) position... fix at some point
+            self.position = [random.randint(253+7,259+7),random.randint(253+7,259+7)]  # This forgets about the set (if set) position... fix at some point
         dataMatrix[self.position[0]][self.position[1]]["Entity"] = self  # Basically tell the game he's there
         self.interaction = interaction  # The discord interaction passes to this class, need to access it later to edit the game message
         self.afkTimer = datetime.datetime.now()
@@ -109,6 +110,15 @@ Tags = {  # Dict containing the tags set for each tile, currently only the walka
     "horse" : {"not_walkable",},
 }
 
+MobSpawnZones = {  # Dict that has all the colors for mob zones
+    "989898" : {"zombie:5", "skeleton:3", "vampire:1"},
+    "8a4b00" : {"bear:5",},
+    "92a100" : {"pumpkin_zombie:8",},
+    "c100a5" : {"rice_snake:8",},
+    "0079c5" : {"jellyfish:8",},
+    "000000" : {"none:0"}
+}
+
 Emotes = {  # Dict that has all the tiles and their emotes mapped to them
     "grass" : "🟩",
     "water_passable" : "🟦",
@@ -137,6 +147,13 @@ Emotes = {  # Dict that has all the tiles and their emotes mapped to them
     # Entity tiles:
     "other_player" : ":neutral_face:",
     "player" : ":grinning:",
+    "zombie" : "🤢",
+    "skeleton" : "💀",
+    "vampire" : "🧛",
+    "bear" : "🐻",
+    "pumpkin_zombie" : "🎃",
+    "rice_snake" : "🐍",
+    "jellyfish" : "🪼",
 }
 
 Directions = {  # the buttons pass w,a,s,d strings instead of inputs cuz im lazy
@@ -147,7 +164,7 @@ Directions = {  # the buttons pass w,a,s,d strings instead of inputs cuz im lazy
 }
 
 
-def add_border_to_matrix(dataMatrix):  # ChatGPT™
+def add_border_to_matrix(dataMatrix, mobMatrix = False):  # ChatGPT™
     # Determine the original dimensions of the dataMatrix
     original_height = len(dataMatrix[0])      # Number of rows (y-coordinate or height)
     original_width = len(dataMatrix)    # Number of columns (x-coordinate or width)
@@ -157,7 +174,10 @@ def add_border_to_matrix(dataMatrix):  # ChatGPT™
     new_width = original_width + 14        # Add 7 columns at the left and 7 columns at the right
 
     # Create a new matrix with the updated dimensions and set all values to the set_value
-    new_matrix = [[{"Tile": "no_vision", "Entity": None} for _ in range(new_width)] for _ in range(new_height)]
+    if mobMatrix:
+        new_matrix = [[{"MobSpawnData": "None"} for _ in range(new_width)] for _ in range(new_height)]
+    else:
+        new_matrix = [[{"Tile": "no_vision", "Entity": None} for _ in range(new_width)] for _ in range(new_height)]
 
     # Copy the original dataMatrix into the new_matrix, leaving the border intact
     for i in range(original_height):
@@ -187,8 +207,25 @@ def loadMapFile(file: str, realMap: bool):  # Loads a map file into a dataMatrix
     return matrix
 
 
+def loadMobZonesFile(file: str):  # Loads a mob zones file into a mobSpawnMatrix
+    tempImg = Image.open(file)
+    dimensions = tempImg.size
+    mapImg = tempImg.load()
+    def hexPixelValue(x: int, y: int):
+        return '%02x%02x%02x' % mapImg[x,y]
+    matrix = [[0 for i in range(dimensions[1])] for j in range(dimensions[0])]
+    for x in range(dimensions[0]):
+        for y in range(dimensions[1]):
+             matrix[x][y] = {
+                 "MobSpawnData": MobSpawnZones[hexPixelValue(x, y)],
+            }
+
+    matrix = add_border_to_matrix(matrix, True)
+    return matrix
+
 dataMatrix = loadMapFile('Map.bmp', True)
 miniMatrix = loadMapFile('miniMap.bmp', False)
+mobSpawnMatrix = loadMobZonesFile("Map1 mob spawns.bmp")
 
 # with open("rpgDataMatrix.txt", 'w') as file:  # Saving the data if we ever need it
 #     for y in range(dimensions[1]):
@@ -225,6 +262,8 @@ def prepareRender(player: Player):  # Prepares render, basically a 13x13 grid of
                         viewport[x][y] = "player"
                     else:
                         viewport[x][y] = "other_player"
+                else:
+                    viewport[x][y] = data["Entity"]
             # print(startX +  x, ', ', startY + y, ' ', str(viewport[x][y]))
     # print(position)
     # viewport[6][6] = "player"
@@ -268,3 +307,44 @@ def menu1(player: Player):  # Returns a discord embed for the menu1 screen (Char
     embed.add_field(name="Stats", value=stats, inline=False)
     embed.add_field(name="Inventory", value=inventory, inline=False)
     return embed
+
+
+def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
+    mob_count = 0
+    rows = len(dataMatrix[0])  # Number of rows
+    cols = len(dataMatrix)  # Number of columns
+
+    # Define the boundaries of the area
+    half_area_size = area_size // 2
+    start_x = max(0, x - half_area_size)
+    end_x = min(rows, x + half_area_size + 1)
+    start_y = max(0, y - half_area_size)
+    end_y = min(cols, y + half_area_size + 1)
+
+    # Count the mobs in the area
+    for i in range(start_x, end_x):
+        for j in range(start_y, end_y):
+            if dataMatrix[i][j]["Entity"] is not None and type(dataMatrix[i][j]["Entity"]) is not Player:
+                mob_count += 1
+                if mob_count >= mob_limit:
+                    return mob_count  # Early exit if limit is reached
+    return mob_count
+
+
+async def gameServerLoop():  # the tick value should be the greatest common divisor between all the loops if we make any
+    gameTimer = datetime.datetime.now()
+    mobAreaLimit = 10
+    tick = 60
+    while True:
+        await asyncio.sleep(tick)
+        print("(RPG) Spawning mobs...")
+        for x in range(len(mobSpawnMatrix)):
+            for y in range(len(mobSpawnMatrix[0])):
+                if mobSpawnMatrix[x][y] != "none" and "walkable" in Tags[dataMatrix[x][y]["Tile"]] and dataMatrix[x][y]["Entity"] is None:
+                    if count_mobs_in_area(x, y, mob_limit=mobAreaLimit) < mobAreaLimit:
+                        for mobSpawnData in mobSpawnMatrix[x][y]["MobSpawnData"]:
+                            mobType = mobSpawnData.split(':')[0]
+                            spawnRate = int(mobSpawnData.split(':')[1])
+                            if random.randint(1,1000) <= spawnRate:
+                                dataMatrix[x][y]["Entity"] = mobType
+                                break
