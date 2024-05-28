@@ -29,9 +29,10 @@ class Player:  # The most important class in the entire game, has all the stuff 
             "armor" : 10,
         }
         self.statusEffects = {
-            "poison" : {0,0}, #{duration, damage}
-            "bleed" : {0,0} #{duration, damage}
+            "poison" : [0,0], #[duration, damage]
+            "bleed" : [0,0] #[duration, damage]
         }
+        self.alive = True
         self.inventory: list[Item] = []
 
         # Example inventory, still placeholder:
