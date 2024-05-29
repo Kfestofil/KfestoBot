@@ -20,7 +20,7 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.interaction = interaction  # The discord interaction passes to this class, need to access it later to edit the game message
         self.afkTimer = datetime.datetime.now()
         self.stats = {  # placeholder, we probably doin this next
-            "life" : 100,
+            "health" : 100,
             "mana" : 100,
             "int" : 10,
             "spd" : 10,
@@ -30,7 +30,7 @@ class Player:  # The most important class in the entire game, has all the stuff 
         }
         self.statusEffects = {
             "poison" : [0,0], #[duration, damage]
-            "bleed" : [0,0] #[duration, damage]
+            "bleed" : [0,0] #[duration, %damage]
         }
         self.alive = True
         self.inventory: list[Item] = []
@@ -40,6 +40,35 @@ class Player:  # The most important class in the entire game, has all the stuff 
         helmet = Item("equipment", "Helmet", armor_class=5, slot="head")
         potion = Item("consumable", "Health Potion", effect="heal", duration=5)
         self.inventory.extend([sword, helmet, potion])
+class Mob:
+    def __init__(self, mob_type: str, zone: str):
+        self.level = random(1,10)
+        self.levelMultiplier = (level+10)/10
+        if self.mob_type == "zombie":
+            self.health = random.randint(75, 150) * self.levelMultiplier
+            self.attack = random.randint(5, 10) * self.levelMultiplier
+        elif self.mob_type == "vampire":
+            self.health = random.randint(100, 200) * self.levelMultiplier
+            self.attack = random.randint(15, 25) * self.levelMultiplier
+        elif self.mob_type == "skeleton":
+            self.health = random.randint(50, 100) * self.levelMultiplier
+            self.attack = random.randint(10, 15) * self.levelMultiplier
+        elif self.mob_type == "bear":
+            self.health = random.randint(100, 200) * self.levelMultiplier
+            self.attack = random.randint(20, 30) * self.levelMultiplier
+        elif self.mob_type == "pumpkin_zombie":
+            self.health = random.randint(80, 160) * self.levelMultiplier
+            self.attack = random.randint(6, 12) * self.levelMultiplier
+        elif self.mob_type == "rice_snake":
+            self.health = random.randint(30, 60) * self.levelMultiplier
+            self.attack = random.randint(8, 14) * self.levelMultiplier
+        elif self.mob_type == "jellyfish":
+            self.health = random.randint(40, 80) * self.levelMultiplier
+            self.attack = random.randint(12, 18) * self.levelMultiplier
+        else:
+            self.health = 0
+            self.attack = 0
+            print(f"Unknown mob type: {self.mob_type}")
 
 
 class Item:  # The Item class, use it when adding stuff to player inv
@@ -339,6 +368,34 @@ def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
                 if mob_count >= mob_limit:
                     return mob_count  # Early exit if limit is reached
     return mob_count
+
+
+def weaponAttack(weapon: Item, player: Player, entity, base=10):
+   strModifier = (((player.stats["str"] * 2) + 1 ) / (player.stats["str"] * 2) + base)
+   # weaponDmg = strModifier * weapon's base dmg
+   # entity.stats["health"] -= weaponDmg
+   # if entity.stats["health"] <= 0:
+   #     entity.alive = false
+
+def takeDamage(player: Player, damage, base=100):
+   # if player.stats["armor"] < 0:
+   #     player.stats["armor"] = 0
+    damage_reduction = (player.stats["armor"] + 1) / ((player.stats["armor"] + 1) + base)
+    player.stats["health"] -= damage*(1 - damage_reduction)
+
+def checkPlayerStatus(player: Player):
+    if player.statusEffects["poison"][0] > 0:
+        player.stats["health"] -= player.statusEffects["poison"][1]
+        player.statusEffects["poison"][0] -= 1
+    if player.statusEffects["bleed"][0] > 0:
+        player.stats["health"] *= player.statusEffects["bleed"][1]/100
+        player.statusEffects["bleed"][0] -= 1
+    if player.stats["health"] <= 0:
+        player.alive = False
+
+def combatInitiated(player: Player,hostileEntity):
+    pTurn = True #checks if it's player's turn
+    # No clue on how to make combat not mess up the entire script without using async
 
 
 async def gameServerLoop():  # the tick value should be the greatest common divisor between all the loops if we make any

@@ -193,7 +193,7 @@ async def on_presence_update(memberA: discord.Member, memberB: discord.Member):
             #         any(discord.Activity.name == 'League of Legends' for discord.Activity in activitiesB)):
             #     await sendLeagueUpdate(Kfestofil, Kfestofil, "May your botlane not feed and your jungle gank often Father.", DMCooldown=5)
     except NameError: print("STOP CHANGING PRESENCE I NEED TO WAKE UP FIRST")
-
+    except AttributeError: print("USER NOT IN SERVER")
 
 @tree.command(  # Test command
     name="beat_up_children",
@@ -456,25 +456,6 @@ async def disconnectPlayer(player: rpg.Player):
         print("(RPG) the game message was lost")
     player.awaitingDeletion = True
     playerList.remove(player)
-
-
-def takeDamage(player: rpg.Player, damage, base=100):
-   # if player.stats[armor] < 0:
-   #     player.stats[armor] = 0
-    damage_reduction = (player.stats["armor"] + 1) / ((player.stats["armor"] + 1) + base)
-    player.health -= damage*(1 - damage_reduction)
-def checkPlayerStatus(player: rpg.Player):
-    if player.statusEffects["poison"][0] > 0:
-        player.health -= player.statusEffects["poison"][1]
-        player.statusEffects["poison"][0] -= 1
-    if player.statusEffects["bleed"][0] > 0:
-        player.health *= player.statusEffects["bleed"][1]/100
-        player.statusEffects["bleed"][0] -= 1
-    if player.stats.health <= 0:
-        player.alive = False
-def combatInitiated(player: rpg.Player,hostileEntity):
-    pTurn = True #checks if it's player's turn
-
 
 @tree.command(  # You can guess what this does I think
     name="rpg_join",
