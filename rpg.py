@@ -368,18 +368,22 @@ def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
                 if mob_count >= mob_limit:
                     return mob_count  # Early exit if limit is reached
     return mob_count
-def weaponAttack(weapon: rpg.Item, player: rpg.Player, entity, base=10):
-    strModifier = (((player.stats["str"] * 2) + 1 ) / (player.stats["str"] * 2) + base)
+
+
+def weaponAttack(weapon: Item, player: Player, entity, base=10):
+   strModifier = (((player.stats["str"] * 2) + 1 ) / (player.stats["str"] * 2) + base)
    # weaponDmg = strModifier * weapon's base dmg
    # entity.stats["health"] -= weaponDmg
    # if entity.stats["health"] <= 0:
    #     entity.alive = false
-def takeDamage(player: rpg.Player, damage, base=100):
+
+def takeDamage(player: Player, damage, base=100):
    # if player.stats["armor"] < 0:
    #     player.stats["armor"] = 0
     damage_reduction = (player.stats["armor"] + 1) / ((player.stats["armor"] + 1) + base)
     player.stats["health"] -= damage*(1 - damage_reduction)
-def checkPlayerStatus(player: rpg.Player):
+
+def checkPlayerStatus(player: Player):
     if player.statusEffects["poison"][0] > 0:
         player.stats["health"] -= player.statusEffects["poison"][1]
         player.statusEffects["poison"][0] -= 1
@@ -388,9 +392,11 @@ def checkPlayerStatus(player: rpg.Player):
         player.statusEffects["bleed"][0] -= 1
     if player.stats["health"] <= 0:
         player.alive = False
-def combatInitiated(player: rpg.Player,hostileEntity):
+
+def combatInitiated(player: Player,hostileEntity):
     pTurn = True #checks if it's player's turn
     # No clue on how to make combat not mess up the entire script without using async
+
 
 async def gameServerLoop():  # the tick value should be the greatest common divisor between all the loops if we make any
     gameTimer = datetime.datetime.now()
