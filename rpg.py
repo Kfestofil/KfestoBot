@@ -3,11 +3,12 @@ import datetime
 import random
 from PIL import Image
 from discord import Interaction
+from threading import Thread
 from discord import embeds
 
 
 class Player:  # The most important class in the entire game, has all the stuff related to a player in the game
-    def __init__(self, discordID: int, interaction: Interaction, position = [256,256]):  # default pos is 256,256
+    def __init__(self, discordID: int, interaction: Interaction, position =[160,46]):  # default pos is 256,256
         self.screen = "main"  # main, menu[1,2,...], map
         self.awaitingDeletion = False
         self.ID = discordID
@@ -34,6 +35,7 @@ class Player:  # The most important class in the entire game, has all the stuff 
         }
         self.alive = True
         self.fightAction = 0  # 0 - awaiting action, 1 - attack, 2 - run, add more if necessary
+        self.menuSelection = 0
         self.inventory: list[Item] = []
 
         # Example inventory, still placeholder:
@@ -44,10 +46,11 @@ class Player:  # The most important class in the entire game, has all the stuff 
 
 
 class Mob:
-    def __init__(self, mob_type: str, zone: str):
+    def __init__(self, mob_type: str, zone: str = "map1"):
         self.level = random.randint(1,10)
         self.levelMultiplier = (self.level+10)/10
         self.mob_type = mob_type
+        self.lastAction = [f"{mob_type.capitalize()} is ready to kick your ass!", ""]  # the first field is text in bold, the second one is under it
 
         if self.mob_type == "zombie":
             self.health = random.randint(75, 150)
@@ -305,13 +308,14 @@ def prepareRender(player: Player):  # Prepares render, basically a 13x13 grid of
             if data["Entity"] is None:
                 viewport[x][y] = data["Tile"]
             else:
-                if type(data["Entity"]) == Player:
+                if type(data["Entity"]) is Player:
                     if data["Entity"].ID == player.ID:
                         viewport[x][y] = "player"
                     else:
                         viewport[x][y] = "other_player"
-                else:
-                    viewport[x][y] = data["Entity"]
+                elif type(data["Entity"]) is Mob:
+                    mob: Mob = data["Entity"]
+                    viewport[x][y] = mob.mob_type
             # print(startX +  x, ', ', startY + y, ' ', str(viewport[x][y]))
     # print(position)
     # viewport[6][6] = "player"
@@ -357,7 +361,27 @@ def menu1(player: Player):  # Returns a discord embed for the menu1 screen (Char
     return embed
 
 
-def menuFight(player: Player, enemy: Mob, pTurn: bool):
+def menu2(player: Player):  # Returns the embed for interaction menu
+    embed = embeds.Embed(title="Interactable entities in your proximity", color=0xe80046)
+    sel = player.menuSelection
+    text = ""
+    entities = getInteractables(player)
+    if sel < 0:
+        player.menuSelection = len(entities) - 1
+        sel = len(entities) - 1
+    if sel >= len(entities):
+        player.menuSelection = 0
+        sel = 0
+    for e in range(len(entities)):
+        mob: Mob = entities[e]
+        if e == sel:
+           text += "> "
+        text += f"{mob.mob_type.capitalize()} lv.{mob.level}\n"
+    embed.add_field(name=text, value="", inline=False)
+    return embed
+
+
+def menuFight(player: Player, enemy: Mob):
     pHealth = player.stats["Health"]
     eHealth = enemy.health
     pName = player.interaction.user.display_name
@@ -365,7 +389,20 @@ def menuFight(player: Player, enemy: Mob, pTurn: bool):
     embed = embeds.Embed(title=player.interaction.user.display_name + " vs " + enemy.mob_type, color=0xe80046)
     hpsField = f"{pName}'s HP: ```{pHealth}```\n{eName}'s HP: ```{eHealth}```"
     embed.add_field(name="Battle stats:", value=hpsField, inline=False)
+    eAction = enemy.lastAction
+    embed.add_field(name=eAction[0], value=eAction[1], inline=False)
+    return embed
 
+
+def getInteractables(player: Player):
+    entities = []
+    pos = player.position
+    for x in range(pos[0] - 1, pos[0] + 2):
+        for y in range(pos[1] - 1, pos[1] + 2):
+            if dataMatrix[x][y]["Entity"] is not None:
+                if type(dataMatrix[x][y]["Entity"]) is not Player:
+                    entities.append(dataMatrix[x][y]["Entity"])
+    return entities
 
 
 def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
@@ -418,21 +455,29 @@ def combatInitiated(player: Player, hostileEntity):
     # No clue on how to make combat not mess up the entire script without using async
 
 
+def spawnMobs():
+    mobAreaLimit = 10
+    print("(RPG) Spawning mobs...")
+    for x in range(len(mobSpawnMatrix)):
+        for y in range(len(mobSpawnMatrix[0])):
+            if mobSpawnMatrix[x][y] != "none" and "walkable" in Tags[dataMatrix[x][y]["Tile"]] and dataMatrix[x][y]["Entity"] is None:
+                if count_mobs_in_area(x, y, mob_limit=mobAreaLimit) < mobAreaLimit:
+                    for mobSpawnData in mobSpawnMatrix[x][y]["MobSpawnData"]:
+                        mobType = mobSpawnData.split(':')[0]
+                        spawnRate = int(mobSpawnData.split(':')[1])
+                        if random.randint(1, 1000) <= spawnRate:
+                            dataMatrix[x][y]["Entity"] = Mob(mobType)
+                            break
+    print("(RPG) Finished spawning")
+
+
 async def gameServerLoop():  # the tick value should be the greatest common divisor between all the loops if we make any
     gameTimer = datetime.datetime.now()
-    mobAreaLimit = 10
+    mobSpawnThread = Thread(target=spawnMobs)
+    mobSpawnThread.start()
     tick = 60
     while True:
-        await asyncio.sleep(tick)
         if len(playerList) > 0:
-            print("(RPG) Spawning mobs...")
-            for x in range(len(mobSpawnMatrix)):
-                for y in range(len(mobSpawnMatrix[0])):
-                    if mobSpawnMatrix[x][y] != "none" and "walkable" in Tags[dataMatrix[x][y]["Tile"]] and dataMatrix[x][y]["Entity"] is None:
-                        if count_mobs_in_area(x, y, mob_limit=mobAreaLimit) < mobAreaLimit:
-                            for mobSpawnData in mobSpawnMatrix[x][y]["MobSpawnData"]:
-                                mobType = mobSpawnData.split(':')[0]
-                                spawnRate = int(mobSpawnData.split(':')[1])
-                                if random.randint(1,1000) <= spawnRate:
-                                    dataMatrix[x][y]["Entity"] = mobType
-                                    break
+            mobSpawnThread = Thread(target=spawnMobs)
+            mobSpawnThread.start()
+        await asyncio.sleep(tick)

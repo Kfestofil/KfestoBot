@@ -76,7 +76,7 @@ async def on_ready():
         Brix: datetime.datetime.min
     })
 
-    asyncio.create_task(rpg.gameServerLoop())  # This runs the loop for mob spawning etc. No need to await this we leave it
+    rpgLoop = asyncio.create_task(rpg.gameServerLoop())
 
 @client.event
 async def on_message(message: discord.Message):  # Fires on all messages in all servers
@@ -358,15 +358,22 @@ class RpgMainButtons(discord.ui.View):
 
     @discord.ui.button(label='Interact', style=discord.ButtonStyle.green, row=0)  # placeholder
     async def ButtonE(self, interaction: discord.Interaction, button: discord.ui.Button):
+        msg = await self.player.interaction.original_response()
         await interaction.response.defer()
-        print('xd')
+        if self.player.screen != "menu2":
+            self.player.screen = "menu2"
+            await msg.edit(view=RpgInteractionMenuButtons(self.player))
+            await updateRender(self.player)
+        else:
+            self.player.screen = "main"
+            await updateRender(self.player)
         resetAFKTimeout(self.player)
+
 
     @discord.ui.button(label='Menu', style=discord.ButtonStyle.green, row=0)  # please use the menu windows naming scheme from rpg.py player class
     async def ButtonESC(self, interaction: discord.Interaction, button: discord.ui.Button):
-        msg = await self.player.interaction.original_response()
         await interaction.response.defer()
-        if not self.player.screen[:4] == "menu":
+        if self.player.screen[:4] != "menu":
             self.player.screen = "menu1"
             await updateRender(self.player)
         else:
@@ -397,7 +404,6 @@ class RpgMainButtons(discord.ui.View):
 
     @discord.ui.button(label='Map', style=discord.ButtonStyle.green, row=1)  # please use the menu windows naming scheme from rpg.py player class
     async def ButtonM(self, interaction: discord.Interaction, button: discord.ui.Button):
-        msg = await self.player.interaction.original_response()
         await interaction.response.defer()
         if not self.player.screen == "map":
             self.player.screen = "map"
@@ -405,6 +411,69 @@ class RpgMainButtons(discord.ui.View):
         else:
             self.player.screen = "main"
             await updateRender(self.player)
+        resetAFKTimeout(self.player)
+
+
+class RpgFightButtons(discord.ui.View):
+    # This is the class that shows all the buttons visible when the player is fighting
+    # This is what handles the inputs
+    def __init__(self, player: rpg.Player, timeout=300):
+        super().__init__(timeout=timeout)
+        self.player = player
+
+    @discord.ui.button(label='Attack', style=discord.ButtonStyle.red, row=0)
+    async def ButtonAttack(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.player.fightAction = 1
+        await updateRender(self.player)
+        await interaction.response.defer()
+        resetAFKTimeout(self.player)
+
+    @discord.ui.button(label='Flee', style=discord.ButtonStyle.blurple, row=0)
+    async def ButtonFlee(self, interaction: discord.Interaction, button: discord.ui.Button):
+        msg = await self.player.interaction.original_response()
+        self.player.fightAction = 2
+        await msg.edit(view=RpgMainButtons(self.player))
+        await updateRender(self.player)
+        await interaction.response.defer()
+        resetAFKTimeout(self.player)
+
+
+class RpgInteractionMenuButtons(discord.ui.View):
+    # This is the class that shows all the buttons visible when the player is fighting
+    # This is what handles the inputs
+    def __init__(self, player: rpg.Player, timeout=300):
+        super().__init__(timeout=timeout)
+        self.player = player
+
+    @discord.ui.button(label='Up', style=discord.ButtonStyle.blurple, row=0)
+    async def ButtonUp(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.player.menuSelection -=1
+        await updateRender(self.player)
+        await interaction.response.defer()
+        resetAFKTimeout(self.player)
+
+    @discord.ui.button(label='Select', style=discord.ButtonStyle.green, row=0)
+    async def ButtonSelect(self, interaction: discord.Interaction, button: discord.ui.Button):
+        #eee
+        await updateRender(self.player)
+        await interaction.response.defer()
+        resetAFKTimeout(self.player)
+
+    @discord.ui.button(label='Down', style=discord.ButtonStyle.blurple, row=1)
+    async def ButtonDown(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.player.menuSelection +=1
+        await updateRender(self.player)
+        await interaction.response.defer()
+        resetAFKTimeout(self.player)
+
+    @discord.ui.button(label='Cancel', style=discord.ButtonStyle.red, row=1)
+    async def ButtonCancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        msg = await self.player.interaction.original_response()
+        self.player.screen = "main"
+        self.player.menuSelection = 0
+        await msg.edit(view=RpgMainButtons(self.player))
+        await updateRender(self.player)
+        await interaction.response.defer()
         resetAFKTimeout(self.player)
 
 
@@ -418,6 +487,8 @@ async def updateRender(player: rpg.Player):
         await msg.edit(content=rpg.render(rpg.miniPrepareRender(player)), embed=None)
     elif player.screen == "menu1":
         await msg.edit(content=rpg.render(rpg.prepareRender(player)), embed=rpg.menu1(player))
+    elif player.screen == "menu2":
+        await msg.edit(content=rpg.render(rpg.prepareRender(player)), embed=rpg.menu2(player))
 
 
 async def refreshRenderLoop(player: rpg.Player):  # SHOULD NOT BE CALLED ANYWHERE BESIDES THE JOIN FUNCTION
