@@ -42,8 +42,9 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.inventory.extend([sword, helmet, potion])
 class Mob:
     def __init__(self, mob_type: str, zone: str):
-        self.level = random(1,10)
-        self.levelMultiplier = (level+10)/10
+        self.level = random.randint(1,10)
+        self.levelMultiplier = (self.level+10)/10
+        self.mob_type = mob_type
         if self.mob_type == "zombie":
             self.health = random.randint(75, 150) * self.levelMultiplier
             self.attack = random.randint(5, 10) * self.levelMultiplier
