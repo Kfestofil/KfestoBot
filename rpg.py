@@ -20,19 +20,20 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.interaction = interaction  # The discord interaction passes to this class, need to access it later to edit the game message
         self.afkTimer = datetime.datetime.now()
         self.stats = {  # placeholder, we probably doin this next
-            "health" : 100,
-            "mana" : 100,
-            "int" : 10,
-            "spd" : 10,
-            "str" : 10,
-            "dex" : 10,
-            "armor" : 10,
+            "Health" : 100,
+            "Mana" : 100,
+            "Int" : 10,
+            "Spd" : 10,
+            "Str" : 10,
+            "Dex" : 10,
+            "Armor" : 10,
         }
         self.statusEffects = {
             "poison" : [0,0], #[duration, damage]
             "bleed" : [0,0] #[duration, %damage]
         }
         self.alive = True
+        self.fightAction = 0  # 0 - awaiting action, 1 - attack, 2 - run, add more if necessary
         self.inventory: list[Item] = []
 
         # Example inventory, still placeholder:
@@ -40,36 +41,43 @@ class Player:  # The most important class in the entire game, has all the stuff 
         helmet = Item("equipment", "Helmet", armor_class=5, slot="head")
         potion = Item("consumable", "Health Potion", effect="heal", duration=5)
         self.inventory.extend([sword, helmet, potion])
+
+
 class Mob:
     def __init__(self, mob_type: str, zone: str):
         self.level = random.randint(1,10)
         self.levelMultiplier = (self.level+10)/10
         self.mob_type = mob_type
+
         if self.mob_type == "zombie":
-            self.health = random.randint(75, 150) * self.levelMultiplier
-            self.attack = random.randint(5, 10) * self.levelMultiplier
+            self.health = random.randint(75, 150)
+            self.attack = random.randint(5, 10)
         elif self.mob_type == "vampire":
-            self.health = random.randint(100, 200) * self.levelMultiplier
-            self.attack = random.randint(15, 25) * self.levelMultiplier
+            self.health = random.randint(100, 200)
+            self.attack = random.randint(15, 25)
         elif self.mob_type == "skeleton":
-            self.health = random.randint(50, 100) * self.levelMultiplier
-            self.attack = random.randint(10, 15) * self.levelMultiplier
+            self.health = random.randint(50, 100)
+            self.attack = random.randint(10, 15)
         elif self.mob_type == "bear":
-            self.health = random.randint(100, 200) * self.levelMultiplier
-            self.attack = random.randint(20, 30) * self.levelMultiplier
+            self.health = random.randint(100, 200)
+            self.attack = random.randint(20, 30)
         elif self.mob_type == "pumpkin_zombie":
-            self.health = random.randint(80, 160) * self.levelMultiplier
-            self.attack = random.randint(6, 12) * self.levelMultiplier
+            self.health = random.randint(80, 160)
+            self.attack = random.randint(6, 12)
         elif self.mob_type == "rice_snake":
-            self.health = random.randint(30, 60) * self.levelMultiplier
-            self.attack = random.randint(8, 14) * self.levelMultiplier
+            self.health = random.randint(30, 60)
+            self.attack = random.randint(8, 14)
         elif self.mob_type == "jellyfish":
-            self.health = random.randint(40, 80) * self.levelMultiplier
-            self.attack = random.randint(12, 18) * self.levelMultiplier
+            self.health = random.randint(40, 80)
+            self.attack = random.randint(12, 18)
         else:
             self.health = 0
             self.attack = 0
             print(f"Unknown mob type: {self.mob_type}")
+
+        self.health *= self.levelMultiplier
+        self.attack *= self.levelMultiplier
+
 
 
 class Item:  # The Item class, use it when adding stuff to player inv
@@ -342,11 +350,22 @@ def menu1(player: Player):  # Returns a discord embed for the menu1 screen (Char
             if attr not in ("item_type", "name"):
                 inventory += attr + ": " + str(item.__dict__[attr]) + " | "
         inventory += "\n"
-    embed = embeds.Embed(title=player.interaction.user.display_name + "'s Character", color=0xe80046)
     username = player.interaction.user.display_name
+    embed = embeds.Embed(title=username + "'s Character", color=0xe80046)
     embed.add_field(name="Stats", value=stats, inline=False)
     embed.add_field(name="Inventory", value=inventory, inline=False)
     return embed
+
+
+def menuFight(player: Player, enemy: Mob, pTurn: bool):
+    pHealth = player.stats["Health"]
+    eHealth = enemy.health
+    pName = player.interaction.user.display_name
+    eName = enemy.mob_type.capitalize()
+    embed = embeds.Embed(title=player.interaction.user.display_name + " vs " + enemy.mob_type, color=0xe80046)
+    hpsField = f"{pName}'s HP: ```{pHealth}```\n{eName}'s HP: ```{eHealth}```"
+    embed.add_field(name="Battle stats:", value=hpsField, inline=False)
+
 
 
 def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
@@ -374,27 +393,27 @@ def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
 def weaponAttack(weapon: Item, player: Player, entity, base=10):
    strModifier = (((player.stats["str"] * 2) + 1 ) / (player.stats["str"] * 2) + base)
    # weaponDmg = strModifier * weapon's base dmg
-   # entity.stats["health"] -= weaponDmg
-   # if entity.stats["health"] <= 0:
+   # entity.stats["Health"] -= weaponDmg
+   # if entity.stats["Health"] <= 0:
    #     entity.alive = false
 
 def takeDamage(player: Player, damage, base=100):
-   # if player.stats["armor"] < 0:
-   #     player.stats["armor"] = 0
-    damage_reduction = (player.stats["armor"] + 1) / ((player.stats["armor"] + 1) + base)
-    player.stats["health"] -= damage*(1 - damage_reduction)
+   # if player.stats["Armor"] < 0:
+   #     player.stats["Armor"] = 0
+    damage_reduction = (player.stats["Armor"] + 1) / ((player.stats["Armor"] + 1) + base)
+    player.stats["Health"] -= damage*(1 - damage_reduction)
 
 def checkPlayerStatus(player: Player):
     if player.statusEffects["poison"][0] > 0:
-        player.stats["health"] -= player.statusEffects["poison"][1]
+        player.stats["Health"] -= player.statusEffects["poison"][1]
         player.statusEffects["poison"][0] -= 1
     if player.statusEffects["bleed"][0] > 0:
-        player.stats["health"] *= player.statusEffects["bleed"][1]/100
+        player.stats["Health"] *= player.statusEffects["bleed"][1]/100
         player.statusEffects["bleed"][0] -= 1
-    if player.stats["health"] <= 0:
+    if player.stats["Health"] <= 0:
         player.alive = False
 
-def combatInitiated(player: Player,hostileEntity):
+def combatInitiated(player: Player, hostileEntity):
     pTurn = True #checks if it's player's turn
     # No clue on how to make combat not mess up the entire script without using async
 
