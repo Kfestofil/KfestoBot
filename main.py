@@ -424,6 +424,7 @@ class RpgFightButtons(discord.ui.View):
     @discord.ui.button(label='Attack', style=discord.ButtonStyle.red, row=0)
     async def ButtonAttack(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.player.fightAction = 1
+        self.player.tookAction.set()
         await updateRender(self.player)
         await interaction.response.defer()
         resetAFKTimeout(self.player)
@@ -432,6 +433,7 @@ class RpgFightButtons(discord.ui.View):
     async def ButtonFlee(self, interaction: discord.Interaction, button: discord.ui.Button):
         msg = await self.player.interaction.original_response()
         self.player.fightAction = 2
+        self.player.tookAction.set()
         await msg.edit(view=RpgMainButtons(self.player))
         await updateRender(self.player)
         await interaction.response.defer()
@@ -454,7 +456,10 @@ class RpgInteractionMenuButtons(discord.ui.View):
 
     @discord.ui.button(label='Select', style=discord.ButtonStyle.green, row=0)
     async def ButtonSelect(self, interaction: discord.Interaction, button: discord.ui.Button):
-        #eee
+        msg = await self.player.interaction.original_response()
+        rpg.menuSelect(self.player)
+        if self.player.screen == "fight":
+            await msg.edit(view=RpgFightButtons(self.player))
         await updateRender(self.player)
         await interaction.response.defer()
         resetAFKTimeout(self.player)
@@ -489,6 +494,14 @@ async def updateRender(player: rpg.Player):
         await msg.edit(content=rpg.render(rpg.prepareRender(player)), embed=rpg.menu1(player))
     elif player.screen == "menu2":
         await msg.edit(content=rpg.render(rpg.prepareRender(player)), embed=rpg.menu2(player))
+    elif player.screen == "fight":
+        if player.fightAction == 3:
+            player.fightAction = 0
+            player.screen = "main"
+            player.selectedObject = None
+            await msg.edit(content="Fight ended, loading you back into the game...",embed=None, view=RpgMainButtons(player))
+        else:
+            await msg.edit(content="", embed=rpg.menuFight(player, player.selectedObject))
 
 
 async def refreshRenderLoop(player: rpg.Player):  # SHOULD NOT BE CALLED ANYWHERE BESIDES THE JOIN FUNCTION
@@ -499,9 +512,8 @@ async def refreshRenderLoop(player: rpg.Player):  # SHOULD NOT BE CALLED ANYWHER
         else:
             break
 
-    if not player.awaitingDeletion:
-        print(f"(RPG) Killed {player.interaction.user.display_name} for afk")
-        await disconnectPlayer(player)
+    print(f"(RPG) Killed {player.interaction.user.display_name} using render loop")
+    await disconnectPlayer(player)
 
 # async def rpgInput(inputStr: str, player: rpg.Player):  # Old way to handle inputs
 #     for c in inputStr:
@@ -517,8 +529,8 @@ def resetAFKTimeout(player: rpg.Player):  # Call this everytime player does some
 
 
 async def disconnectPlayer(player: rpg.Player):
-    # Call when you want to disconnect player, handles everything for you
-    # MAKE SURE TO NOT CALL THIS AS A RESULT OF THE Player.awaitingDeletion TAG TO PREVENT LOOPS
+    # Call when you want to disconnect player, handles everything for you,
+    # you can also kill player by setting awaitingDeletion tag to True if u need to do it in rpg.py
     rpg.dataMatrix[player.position[0]][player.position[1]]["Entity"] = None
     try:
         msg = await player.interaction.original_response()

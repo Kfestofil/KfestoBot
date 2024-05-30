@@ -4,6 +4,7 @@ import random
 from PIL import Image
 from discord import Interaction
 from threading import Thread
+from threading import Event
 from discord import embeds
 
 
@@ -34,8 +35,10 @@ class Player:  # The most important class in the entire game, has all the stuff 
             "bleed" : [0,0] #[duration, %damage]
         }
         self.alive = True
-        self.fightAction = 0  # 0 - awaiting action, 1 - attack, 2 - run, add more if necessary
         self.menuSelection = 0
+        self.selectedObject = None
+        self.fightAction = 0  # 0 - awaiting action, 1 - attack, 2 - run, 3 - fight finished awaiting end, add more if necessary
+        self.tookAction = Event()  # Read about python threading Events before doing something with this
         self.inventory: list[Item] = []
 
         # Example inventory, still placeholder:
@@ -46,10 +49,12 @@ class Player:  # The most important class in the entire game, has all the stuff 
 
 
 class Mob:
-    def __init__(self, mob_type: str, zone: str = "map1"):
+    def __init__(self, mob_type: str, zone: str = "map1", position = [0,0]):
         self.level = random.randint(1,10)
         self.levelMultiplier = (self.level+10)/10
         self.mob_type = mob_type
+        self.alive = True
+        self.position = position
         self.lastAction = [f"{mob_type.capitalize()} is ready to kick your ass!", ""]  # the first field is text in bold, the second one is under it
 
         if self.mob_type == "zombie":
@@ -80,6 +85,7 @@ class Mob:
 
         self.health *= self.levelMultiplier
         self.attack *= self.levelMultiplier
+        self.health = round(self.health)
 
 
 
@@ -375,10 +381,20 @@ def menu2(player: Player):  # Returns the embed for interaction menu
     for e in range(len(entities)):
         mob: Mob = entities[e]
         if e == sel:
-           text += "> "
+            text += "> "
+            player.selectedObject = entities[e]
         text += f"{mob.mob_type.capitalize()} lv.{mob.level}\n"
     embed.add_field(name=text, value="", inline=False)
     return embed
+
+
+def menuSelect(player: Player):
+    if player.screen == "menu2":
+        entity = player.selectedObject
+        if type(entity) is Mob:
+            combatThread = Thread(target=combatInitiated, args=(player,entity))
+            combatThread.start()
+            player.screen = "fight"
 
 
 def menuFight(player: Player, enemy: Mob):
@@ -387,7 +403,7 @@ def menuFight(player: Player, enemy: Mob):
     pName = player.interaction.user.display_name
     eName = enemy.mob_type.capitalize()
     embed = embeds.Embed(title=player.interaction.user.display_name + " vs " + enemy.mob_type, color=0xe80046)
-    hpsField = f"{pName}'s HP: ```{pHealth}```\n{eName}'s HP: ```{eHealth}```"
+    hpsField = f"{pName}'s HP: `{pHealth}`\n{eName}'s HP: `{eHealth}`"
     embed.add_field(name="Battle stats:", value=hpsField, inline=False)
     eAction = enemy.lastAction
     embed.add_field(name=eAction[0], value=eAction[1], inline=False)
@@ -427,18 +443,23 @@ def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
     return mob_count
 
 
-def weaponAttack(weapon: Item, player: Player, entity, base=10):
-   strModifier = (((player.stats["str"] * 2) + 1 ) / (player.stats["str"] * 2) + base)
-   # weaponDmg = strModifier * weapon's base dmg
-   # entity.stats["Health"] -= weaponDmg
-   # if entity.stats["Health"] <= 0:
-   #     entity.alive = false
+def weaponAttack(weapon: Item, player: Player, entity: Mob, base=10):
+    strModifier = (((player.stats["Str"] * 2) + 1 ) / (player.stats["Str"] * 2) + base)
+    weaponDmg = strModifier * weapon.damage
+    weaponDmg = round(weaponDmg)
+    entity.health -= weaponDmg
+    if entity.health <= 0:
+        entity.alive = False
+
 
 def takeDamage(player: Player, damage, base=100):
-   # if player.stats["Armor"] < 0:
-   #     player.stats["Armor"] = 0
+    # if player.stats["Armor"] < 0:
+    #     player.stats["Armor"] = 0
     damage_reduction = (player.stats["Armor"] + 1) / ((player.stats["Armor"] + 1) + base)
-    player.stats["Health"] -= damage*(1 - damage_reduction)
+    dmg = damage*(1 - damage_reduction)
+    dmg = round(dmg)
+    player.stats["Health"] -= dmg
+    return dmg
 
 def checkPlayerStatus(player: Player):
     if player.statusEffects["poison"][0] > 0:
@@ -447,12 +468,48 @@ def checkPlayerStatus(player: Player):
     if player.statusEffects["bleed"][0] > 0:
         player.stats["Health"] *= player.statusEffects["bleed"][1]/100
         player.statusEffects["bleed"][0] -= 1
+    player.stats["Health"] = round(player.stats["Health"])
     if player.stats["Health"] <= 0:
         player.alive = False
 
 def combatInitiated(player: Player, hostileEntity):
-    pTurn = True #checks if it's player's turn
-    # No clue on how to make combat not mess up the entire script without using async
+    pTurn = True  # checks if it's player's turn
+    pWeapon = None
+    for i in player.inventory:
+        if i.item_type == "weapon":
+            pWeapon = i
+
+    mob: Mob = hostileEntity
+    while True:
+        if pTurn:
+            flag = player.tookAction.wait(300)
+            if flag:
+                action = player.fightAction
+                if action == 1:
+                    weaponAttack(pWeapon, player, mob)
+                    if not mob.alive: break
+                if action == 2:
+                    break
+            player.tookAction.clear()
+            pTurn = False
+        else:
+            dmg = mob.attack
+            dmg = takeDamage(player, dmg)
+            mob.lastAction = [f"{mob.mob_type.capitalize()} attacked you!", f" it dealt {dmg} damage!"]
+            checkPlayerStatus(player)
+            if not player.alive:
+                print(f"{player.interaction.user.display_name} just got killed")
+                break
+            pTurn = True
+    player.tookAction.clear()
+
+    if not mob.alive:
+        dataMatrix[mob.position[0]][mob.position[1]]["Entity"] = None
+        del mob
+    if not player.alive:
+        player.awaitingDeletion = True
+
+    player.fightAction = 3
 
 
 def spawnMobs():
@@ -466,7 +523,7 @@ def spawnMobs():
                         mobType = mobSpawnData.split(':')[0]
                         spawnRate = int(mobSpawnData.split(':')[1])
                         if random.randint(1, 1000) <= spawnRate:
-                            dataMatrix[x][y]["Entity"] = Mob(mobType)
+                            dataMatrix[x][y]["Entity"] = Mob(mobType, position=[x,y])
                             break
     print("(RPG) Finished spawning")
 
