@@ -29,6 +29,9 @@ class Player:  # The most important class in the entire game, has all the stuff 
             "Str" : 10,
             "Dex" : 10,
             "Armor" : 10,
+            "Level" : 1,
+            "Exp" : 0,
+            "SkillPoints" : 0
         }
         self.statusEffects = {
             "poison" : [0,0], #[duration, damage]
@@ -51,33 +54,33 @@ class Player:  # The most important class in the entire game, has all the stuff 
 class Mob:
     def __init__(self, mob_type: str, zone: str = "map1", position = [0,0]):
         self.level = random.randint(1,10)
-        self.levelMultiplier = (self.level+10)/10
+        self.levelMultiplier = (self.level*2 + 5)/10
         self.mob_type = mob_type
         self.alive = True
         self.position = position
         self.lastAction = [f"{mob_type.capitalize()} is ready to kick your ass!", ""]  # the first field is text in bold, the second one is under it
 
         if self.mob_type == "zombie":
-            self.health = random.randint(75, 150)
-            self.attack = random.randint(5, 10)
+            self.health = random.randint(95, 170)
+            self.attack = random.randint(9, 14)
         elif self.mob_type == "vampire":
-            self.health = random.randint(100, 200)
-            self.attack = random.randint(15, 25)
+            self.health = random.randint(120, 220)
+            self.attack = random.randint(19, 29)
         elif self.mob_type == "skeleton":
-            self.health = random.randint(50, 100)
-            self.attack = random.randint(10, 15)
+            self.health = random.randint(70, 120)
+            self.attack = random.randint(14, 19)
         elif self.mob_type == "bear":
-            self.health = random.randint(100, 200)
-            self.attack = random.randint(20, 30)
+            self.health = random.randint(120, 220)
+            self.attack = random.randint(24, 34)
         elif self.mob_type == "pumpkin_zombie":
-            self.health = random.randint(80, 160)
-            self.attack = random.randint(6, 12)
+            self.health = random.randint(100, 180)
+            self.attack = random.randint(10, 16)
         elif self.mob_type == "rice_snake":
-            self.health = random.randint(30, 60)
-            self.attack = random.randint(8, 14)
-        elif self.mob_type == "jellyfish":
-            self.health = random.randint(40, 80)
+            self.health = random.randint(50, 80)
             self.attack = random.randint(12, 18)
+        elif self.mob_type == "jellyfish":
+            self.health = random.randint(60, 100)
+            self.attack = random.randint(16, 22)
         else:
             self.health = 0
             self.attack = 0
@@ -444,7 +447,7 @@ def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
 
 
 def weaponAttack(weapon: Item, player: Player, entity: Mob, base=10):
-    strModifier = (((player.stats["Str"] * 2) + 1 ) / (player.stats["Str"] * 2) + base)
+    strModifier = (((player.stats["Str"] / 2) + 1 ) / ((player.stats["Str"] / 2) + 1) + base) + 1
     weaponDmg = strModifier * weapon.damage
     weaponDmg = round(weaponDmg)
     entity.health -= weaponDmg
