@@ -31,7 +31,7 @@ class Player:  # The most important class in the entire game, has all the stuff 
             "Armor" : 10,
             "Level" : 1,
             "Exp" : 0,
-            "SkillPoints" : 0
+            "StatPoints" : 0
         }
         self.statusEffects = {
             "poison" : [0,0], #[duration, damage]
@@ -47,8 +47,9 @@ class Player:  # The most important class in the entire game, has all the stuff 
         # Example inventory, still placeholder:
         sword = Item("weapon", "Sword", damage=10, hand_requirement="one-handed")
         helmet = Item("equipment", "Helmet", armor_class=5, slot="head")
-        potion = Item("consumable", "Health Potion", effect="heal", duration=5)
-        self.inventory.extend([sword, helmet, potion])
+        hpPotion = Item("consumable", "Health Potion", effect="heal", duration=5)
+        manaPotion = Item("consumable","Mana Potion", effect="mana", duration=5)
+        self.inventory.extend([sword, helmet, hpPotion,manaPotion])
 
 
 class Mob:
@@ -412,7 +413,12 @@ def menuFight(player: Player, enemy: Mob):
     embed.add_field(name=eAction[0], value=eAction[1], inline=False)
     return embed
 
-
+def getPotions(player: Player):
+    potions = [item for item in player.inventory if item.item_type == "consumable"]
+    for potion in potions:
+        #Not sure how you did that selecting mobs thing with discord, we need to select from a list here too, shouldn't be hard
+        print(f"Name: {potion.name}, Effect: {potion.effect}, Duration: {potion.duration}")
+    return  potions
 def getInteractables(player: Player):
     entities = []
     pos = player.position
@@ -422,7 +428,6 @@ def getInteractables(player: Player):
                 if type(dataMatrix[x][y]["Entity"]) is not Player:
                     entities.append(dataMatrix[x][y]["Entity"])
     return entities
-
 
 def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
     mob_count = 0
@@ -507,6 +512,13 @@ def combatInitiated(player: Player, hostileEntity):
     player.tookAction.clear()
 
     if not mob.alive:
+        player.stats["Exp"] += mob.level
+        if player.stats["Level"] * 50 <= player.stats["Exp"]:
+            player.stats["Exp"] = 0
+            player.stats["Level"] += 1
+            player.stats["StatPoints"] += 3
+            print(player.ID)
+            print(player.stats["StatPoints"])
         dataMatrix[mob.position[0]][mob.position[1]]["Entity"] = None
         del mob
     if not player.alive:

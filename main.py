@@ -413,6 +413,12 @@ class RpgMainButtons(discord.ui.View):
             await updateRender(self.player)
         resetAFKTimeout(self.player)
 
+    @discord.ui.button(label='Potion', style=discord.ButtonStyle.red, row=2)
+    async def ButtonPOT(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        rpg.getPotions(self.player)
+        # seems to work fine, not sure if i should just ctrl c ctrl v it into combat view too or
+        # if theres any other way in which you'd want this done
 
 class RpgFightButtons(discord.ui.View):
     # This is the class that shows all the buttons visible when the player is fighting
