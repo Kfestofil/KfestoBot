@@ -415,10 +415,17 @@ class RpgMainButtons(discord.ui.View):
 
     @discord.ui.button(label='Potion', style=discord.ButtonStyle.red, row=2)
     async def ButtonPOT(self, interaction: discord.Interaction, button: discord.ui.Button):
+        msg = await self.player.interaction.original_response()
+        if not self.player.screen == "menu3":
+            self.player.screen = "menu3"
+            await msg.edit(view=RpgInteractionMenuButtons(self.player))
+            await updateRender(self.player)
+        else:
+            self.player.screen = "main"
+            await msg.edit(view=RpgMainButtons(self.player))
+            await updateRender(self.player)
         await interaction.response.defer()
-        rpg.getPotions(self.player)
-        # seems to work fine, not sure if i should just ctrl c ctrl v it into combat view too or
-        # if theres any other way in which you'd want this done
+        resetAFKTimeout(self.player)
 
 class RpgFightButtons(discord.ui.View):
     # This is the class that shows all the buttons visible when the player is fighting
@@ -500,6 +507,9 @@ async def updateRender(player: rpg.Player):
         await msg.edit(content=rpg.render(rpg.prepareRender(player)), embed=rpg.menu1(player))
     elif player.screen == "menu2":
         await msg.edit(content=rpg.render(rpg.prepareRender(player)), embed=rpg.menu2(player))
+    elif player.screen == "menu3":
+        await msg.edit(content=rpg.render(rpg.prepareRender(player)), embed=rpg.menu3(player))
+
     elif player.screen == "fight":
         if player.fightAction == 3:
             player.fightAction = 0

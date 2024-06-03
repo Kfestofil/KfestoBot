@@ -1,11 +1,18 @@
 import asyncio
 import datetime
 import random
+import items
+import copy
 from PIL import Image
 from discord import Interaction
 from threading import Thread
 from threading import Event
 from discord import embeds
+from items import Item
+
+
+def give(item: Item):
+    return copy.deepcopy(item)
 
 
 class Player:  # The most important class in the entire game, has all the stuff related to a player in the game
@@ -43,13 +50,17 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.fightAction = 0  # 0 - awaiting action, 1 - attack, 2 - run, 3 - fight finished awaiting end, add more if necessary
         self.tookAction = Event()  # Read about python threading Events before doing something with this
         self.inventory: list[Item] = []
-
-        # Example inventory, still placeholder:
-        sword = Item("weapon", "Sword", damage=10, hand_requirement="one-handed")
-        helmet = Item("equipment", "Helmet", armor_class=5, slot="head")
-        hpPotion = Item("consumable", "Health Potion", effect="heal", duration=5)
-        manaPotion = Item("consumable","Mana Potion", effect="mana", duration=5)
-        self.inventory.extend([sword, helmet, hpPotion,manaPotion])
+        self.inventory.extend([give(items.Consumables.health_potion), give(items.Consumables.mana_potion)])
+        self.equipment = {
+            "weapon" : give(items.Weapons.rusty_sword),
+            "head" : give(items.Helmets.old_hat),
+            "chest" : give(items.Chestplates.ragged_tunic),
+            "pants" : give(items.Pants.tattered_pants),
+            "boots" : give(items.Boots.simple_sandals),
+        }
+        print ("xd")
+        items.Weapons.rusty_sword.damage = 0
+        print("xd2")
 
 
 class Mob:
@@ -92,27 +103,6 @@ class Mob:
         self.health = round(self.health)
 
 
-
-class Item:  # The Item class, use it when adding stuff to player inv
-    def __init__(self, item_type: str, name: str, **kwargs):
-        self.item_type = item_type
-        self.name = name
-
-        # Define attribute mappings based on item type
-        attribute_map = {
-            "weapon": ["damage", "hand_requirement"],
-            "equipment": ["armor_class", "slot"],
-            "consumable": ["effect", "duration"]
-        }
-
-        # Set attributes based on the item type and provided kwargs
-        if item_type in attribute_map:
-            for attr in attribute_map[item_type]:
-                if attr in kwargs:
-                    setattr(self, attr, kwargs[attr])
-                else:
-                    print("(RPG) AN ITEM WAS CREATED WITHOUT PROPER ATTRIBUTES")
-                    setattr(self, attr, None)
 
 
 Tiles = {  # Dict containing the color mapping to the tile names
@@ -353,21 +343,13 @@ def render(viewport = []):  # Renders a prepareRender viewport, basically a stri
     return text
 
 
-def menu1(player: Player):  # Returns a discord embed for the menu1 screen (Character menu rn)
+def menu1(player: Player):  # Returns a discord embed for the character menu
     stats = ''
-    inventory = ''
     for stat in player.stats.keys():
         stats += f"{stat}: {player.stats[stat]}\n"
-    for item in player.inventory:
-        inventory += item.name + " | "
-        for attr in item.__dict__:
-            if attr not in ("item_type", "name"):
-                inventory += attr + ": " + str(item.__dict__[attr]) + " | "
-        inventory += "\n"
     username = player.interaction.user.display_name
     embed = embeds.Embed(title=username + "'s Character", color=0xe80046)
     embed.add_field(name="Stats", value=stats, inline=False)
-    embed.add_field(name="Inventory", value=inventory, inline=False)
     return embed
 
 
@@ -413,12 +395,32 @@ def menuFight(player: Player, enemy: Mob):
     embed.add_field(name=eAction[0], value=eAction[1], inline=False)
     return embed
 
-def getPotions(player: Player):
-    potions = [item for item in player.inventory if item.item_type == "consumable"]
-    for potion in potions:
-        #Not sure how you did that selecting mobs thing with discord, we need to select from a list here too, shouldn't be hard
-        print(f"Name: {potion.name}, Effect: {potion.effect}, Duration: {potion.duration}")
-    return  potions
+
+def menu3(player: Player):  # Returns the embed for Inventory menu
+    embed = embeds.Embed(title="Inventory", color=0xe80046)
+    stats = f"HP: {player.stats['Health']}, MP: {player.stats['Mana']}"
+    sel = player.menuSelection
+    text = ""
+    items = [item for item in player.inventory if item.item_type != "consumable"]
+    items.extend([item for item in player.inventory if item.item_type == "consumable"])
+    if sel < 0:
+        player.menuSelection = len(items) - 1
+        sel = len(items) - 1
+    if sel >= len(items):
+        player.menuSelection = 0
+        sel = 0
+    for e in range(len(items)):
+        pot: Item = items[e]
+        if e == sel:
+            text += "> "
+            player.selectedObject = items[e]
+        text += f"{pot.name}\n"
+
+    embed.add_field(name=stats, value="", inline=False)
+    embed.add_field(name=text, value="", inline=False)
+    return embed
+
+
 def getInteractables(player: Player):
     entities = []
     pos = player.position
@@ -479,6 +481,7 @@ def checkPlayerStatus(player: Player):
     player.stats["Health"] = round(player.stats["Health"])
     if player.stats["Health"] <= 0:
         player.alive = False
+
 
 def combatInitiated(player: Player, hostileEntity):
     pTurn = True  # checks if it's player's turn
