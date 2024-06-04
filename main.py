@@ -370,7 +370,7 @@ class RpgMainButtons(discord.ui.View):
         resetAFKTimeout(self.player)
 
 
-    @discord.ui.button(label='Menu', style=discord.ButtonStyle.green, row=0)  # please use the menu windows naming scheme from rpg.py player class
+    @discord.ui.button(label='Character', style=discord.ButtonStyle.green, row=0)  # please use the menu windows naming scheme from rpg.py player class
     async def ButtonESC(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         if self.player.screen[:4] != "menu":
@@ -413,8 +413,8 @@ class RpgMainButtons(discord.ui.View):
             await updateRender(self.player)
         resetAFKTimeout(self.player)
 
-    @discord.ui.button(label='Potion', style=discord.ButtonStyle.red, row=2)
-    async def ButtonPOT(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label='Inventory', style=discord.ButtonStyle.red, row=1)
+    async def ButtonINV(self, interaction: discord.Interaction, button: discord.ui.Button):
         msg = await self.player.interaction.original_response()
         if not self.player.screen == "menu3":
             self.player.screen = "menu3"
