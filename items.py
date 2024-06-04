@@ -22,13 +22,13 @@ class Item:  # The Item class, use it when adding stuff to player inv
 
 
 # EQUIPEMENT NAMING SCHEME: ALL non-capital LETTERS, USE UNDERSCORES, NO ABBREVIATIONS,
-# REMEMBER TO ALWAYS CALL THE new() FUNCTION WHEN GIVING ITEMS TO PLAYERS
+# REMEMBER TO CREATE THOSE OBJECT
 class Consumables:
     health_potion = Item("consumable", "Health Potion", effect="heal", duration=5)
     mana_potion = Item("consumable","Mana Potion", effect="mana", duration=5)
 
 class Weapons:
-    rusty_sword = Item("weapon", "Rusty sword", damage=10, slot="weapon")
+    rusty_sword = Item("weapon", "Sword", damage=10, slot="weapon")
 
     divine_blade_of_kfestofil = Item("weapon", "The Divine Blade of Kfestofil, "  # Don't.
                                   "The Harbinger of Death, "
@@ -36,13 +36,13 @@ class Weapons:
                                   "The Ender of Universes", damage=69420, slot="weapon")
 
 class Helmets:
-    old_hat = Item("equipment", "Old hat", armor_class=0, slot="head")
+    old_hat = Item("equipment", "Helmet", armor_class=0, slot="head")
 
 class Chestplates:
-    ragged_tunic = Item("equipment", "Ragged tunic", armor_class=0, slot="chest")
+    ragged_tunic = Item("equipment", "Helmet", armor_class=0, slot="chest")
 
 class Pants:
-    tattered_pants = Item("equipment", "Tattered pants", armor_class=0, slot="pants")
+    tattered_pants = Item("equipment", "Helmet", armor_class=0, slot="pants")
 
 class Boots:
-    simple_sandals = Item("equipment", "Simple sandals", armor_class=0, slot="boots")
+    simple_sandals = Item("equipment", "Helmet", armor_class=0, slot="boots")

@@ -11,7 +11,7 @@ from discord import embeds
 from items import Item
 
 
-def new(item: Item):
+def give(item: Item):
     return copy.deepcopy(item)
 
 
@@ -50,17 +50,18 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.fightAction = 0  # 0 - awaiting action, 1 - attack, 2 - run, 3 - fight finished awaiting end, add more if necessary
         self.tookAction = Event()  # Read about python threading Events before doing something with this
         self.inventory: list[Item] = []
-        self.inventory.extend([new(items.Consumables.health_potion), new(items.Consumables.mana_potion)])
+        self.inventory.extend([give(items.Consumables.health_potion), give(items.Consumables.mana_potion)])
         self.equipment = {
-            "weapon" : new(items.Weapons.rusty_sword),
-            "head" : new(items.Helmets.old_hat),
-            "chest" : new(items.Chestplates.ragged_tunic),
-            "pants" : new(items.Pants.tattered_pants),
-            "boots" : new(items.Boots.simple_sandals),
+            "weapon" : give(items.Weapons.rusty_sword),
+            "head" : give(items.Helmets.old_hat),
+            "chest" : give(items.Chestplates.ragged_tunic),
+            "pants" : give(items.Pants.tattered_pants),
+            "boots" : give(items.Boots.simple_sandals),
         }
+        print ("xd")
+        items.Weapons.rusty_sword.damage = 0
+        print("xd2")
 
-        if interaction.user.id == 490793326476263434:
-            self.inventory.append(new(items.Weapons.divine_blade_of_kfestofil))
 
 class Mob:
     def __init__(self, mob_type: str, zone: str = "map1", position = [0,0]):
@@ -373,22 +374,13 @@ def menu2(player: Player):  # Returns the embed for interaction menu
     return embed
 
 
-def menuSelect(player: Player):  # Function that handles the action for when object is selected in menu
+def menuSelect(player: Player):
     if player.screen == "menu2":
         entity = player.selectedObject
         if type(entity) is Mob:
             combatThread = Thread(target=combatInitiated, args=(player,entity))
             combatThread.start()
             player.screen = "fight"
-    if player.screen == "menu3":
-        item = player.selectedObject
-        if type(item) is Item:
-            if item.item_type in ("weapon", "equipment"):
-                slot = item.slot
-                temp = player.equipment[slot]
-                player.inventory.append(temp)
-                player.equipment[slot] = item
-                player.inventory.remove(item)
 
 
 def menuFight(player: Player, enemy: Mob):
@@ -409,11 +401,6 @@ def menu3(player: Player):  # Returns the embed for Inventory menu
     stats = f"HP: {player.stats['Health']}, MP: {player.stats['Mana']}"
     sel = player.menuSelection
     text = ""
-    texte = ""
-    equipmentk = [item for item in player.equipment.keys()]
-    for eqi in equipmentk:
-        texte += f"{eqi.capitalize()}: `{player.equipment[eqi].name}`\n"
-
     items = [item for item in player.inventory if item.item_type != "consumable"]
     items.extend([item for item in player.inventory if item.item_type == "consumable"])
     if sel < 0:
@@ -423,15 +410,14 @@ def menu3(player: Player):  # Returns the embed for Inventory menu
         player.menuSelection = 0
         sel = 0
     for e in range(len(items)):
-        it: Item = items[e]
+        pot: Item = items[e]
         if e == sel:
             text += "> "
-            player.selectedObject = it
-        text += f"{it.name}\n"
+            player.selectedObject = items[e]
+        text += f"{pot.name}\n"
 
-    embed.add_field(name="stats", value=stats, inline=False)
-    embed.add_field(name="Equipment", value=texte, inline=False)
-    embed.add_field(name="Inventory", value=text, inline=False)
+    embed.add_field(name=stats, value="", inline=False)
+    embed.add_field(name=text, value="", inline=False)
     return embed
 
 
