@@ -29,7 +29,6 @@ class Consumables:
 
 class Weapons:
     rusty_sword = Item("weapon", "Rusty sword", damage=10, slot="weapon")
-
     divine_blade_of_kfestofil = Item("weapon", "The Divine Blade of Kfestofil, "  # Don't.
                                   "The Harbinger of Death, "
                                   "The Destroyer of Worlds, "
@@ -37,6 +36,9 @@ class Weapons:
 
 class Helmets:
     old_hat = Item("equipment", "Old hat", armor_class=0, slot="head")
+    fishelm = Item("equipment", "Fishelm, The protector of the weak, "
+                                "The Light in the Dark, "
+                                "The Last Hope", armor_class=1337, slot="head")
 
 class Chestplates:
     ragged_tunic = Item("equipment", "Ragged tunic", armor_class=0, slot="chest")

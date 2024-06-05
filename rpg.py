@@ -65,6 +65,8 @@ class Player:  # The most important class in the entire game, has all the stuff 
 
         if interaction.user.id == 490793326476263434:
             self.inventory.append(new(items.Weapons.divine_blade_of_kfestofil))
+        if interaction.user.id == 448145391154626575:
+            self.inventory.append(new(items.Helmets.fishelm))
 
 class Mob:
     def __init__(self, mob_type: str, zone: str = "map1", position = [0,0]):
