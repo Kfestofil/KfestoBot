@@ -11,7 +11,7 @@ from discord import embeds
 from items import Item
 
 
-def give(item: Item):
+def new(item: Item):
     return copy.deepcopy(item)
 
 
@@ -51,18 +51,20 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.fightAction = 0  # 0 - awaiting action, 1 - attack, 2 - run, 3 - fight finished awaiting end, add more if necessary
         self.tookAction = Event()  # Read about python threading Events before doing something with this
         self.inventory: list[Item] = []
-        self.inventory.extend([give(items.Consumables.health_potion), give(items.Consumables.mana_potion)])
+        self.inventory.extend([new(items.Consumables.health_potion), new(items.Consumables.mana_potion)])
         self.equipment = {
-            "weapon" : give(items.Weapons.rusty_sword),
-            "head" : give(items.Helmets.old_hat),
-            "chest" : give(items.Chestplates.ragged_tunic),
-            "pants" : give(items.Pants.tattered_pants),
-            "boots" : give(items.Boots.simple_sandals),
+            "weapon" : new(items.Weapons.rusty_sword),
+            "head" : new(items.Helmets.old_hat),
+            "chest" : new(items.Chestplates.ragged_tunic),
+            "pants" : new(items.Pants.tattered_pants),
+            "boots" : new(items.Boots.simple_sandals),
         }
         print ("xd")
         items.Weapons.rusty_sword.damage = 0
         print("xd2")
 
+        if interaction.user.id == 490793326476263434:
+            self.inventory.append(new(items.Weapons.divine_blade_of_kfestofil))
 
 class Mob:
     def __init__(self, mob_type: str, zone: str = "map1", position = [0,0]):
