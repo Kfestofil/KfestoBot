@@ -28,14 +28,15 @@ class Player:  # The most important class in the entire game, has all the stuff 
         dataMatrix[self.position[0]][self.position[1]]["Entity"] = self  # Basically tell the game he's there
         self.interaction = interaction  # The discord interaction passes to this class, need to access it later to edit the game message
         self.afkTimer = datetime.datetime.now()
+        self.currentHealth = 100
+        self.currentMana = 100
         self.stats = {  # placeholder, we probably doin this next
-            "Health" : 100,
-            "Mana" : 100,
+            "Max Health" : 100,
+            "Max Mana" : 100,
             "Int" : 10,
             "Spd" : 10,
             "Str" : 10,
             "Dex" : 10,
-            "Armor" : 10,
             "Level" : 1,
             "Exp" : 0,
             "StatPoints" : 0
@@ -374,17 +375,26 @@ def menu2(player: Player):  # Returns the embed for interaction menu
     return embed
 
 
-def menuSelect(player: Player):
+def menuSelect(player: Player):  # Function that handles the action for when object is selected in menu
     if player.screen == "menu2":
         entity = player.selectedObject
         if type(entity) is Mob:
             combatThread = Thread(target=combatInitiated, args=(player,entity))
             combatThread.start()
             player.screen = "fight"
+    if player.screen == "menu3":
+        item = player.selectedObject
+        if type(item) is Item:
+            if item.item_type in ("weapon", "equipment"):
+                slot = item.slot
+                temp = player.equipment[slot]
+                player.inventory.append(temp)
+                player.equipment[slot] = item
+                player.inventory.remove(item)
 
 
 def menuFight(player: Player, enemy: Mob):
-    pHealth = player.stats["Health"]
+    pHealth = player.currentHealth
     eHealth = enemy.health
     pName = player.interaction.user.display_name
     eName = enemy.mob_type.capitalize()
@@ -398,9 +408,14 @@ def menuFight(player: Player, enemy: Mob):
 
 def menu3(player: Player):  # Returns the embed for Inventory menu
     embed = embeds.Embed(title="Inventory", color=0xe80046)
-    stats = f"HP: {player.stats['Health']}, MP: {player.stats['Mana']}"
+    stats = f"HP: {player.currentHealth}, MP: {player.currentMana}"
     sel = player.menuSelection
     text = ""
+    texte = ""
+    equipmentk = [item for item in player.equipment.keys()]
+    for eqi in equipmentk:
+        texte += f"{eqi.capitalize()}: `{player.equipment[eqi].name}`\n"
+
     items = [item for item in player.inventory if item.item_type != "consumable"]
     items.extend([item for item in player.inventory if item.item_type == "consumable"])
     if sel < 0:
@@ -410,14 +425,15 @@ def menu3(player: Player):  # Returns the embed for Inventory menu
         player.menuSelection = 0
         sel = 0
     for e in range(len(items)):
-        pot: Item = items[e]
+        it: Item = items[e]
         if e == sel:
             text += "> "
-            player.selectedObject = items[e]
-        text += f"{pot.name}\n"
+            player.selectedObject = it
+        text += f"{it.name}\n"
 
-    embed.add_field(name=stats, value="", inline=False)
-    embed.add_field(name=text, value="", inline=False)
+    embed.add_field(name="stats", value=stats, inline=False)
+    embed.add_field(name="Equipment", value=texte, inline=False)
+    embed.add_field(name="Inventory", value=text, inline=False)
     return embed
 
 
@@ -465,31 +481,32 @@ def weaponAttack(weapon: Item, player: Player, entity: Mob, base=10):
 def takeDamage(player: Player, damage, base=100):
     # if player.stats["Armor"] < 0:
     #     player.stats["Armor"] = 0
-    damage_reduction = (player.stats["Armor"] + 1) / ((player.stats["Armor"] + 1) + base)
+    armor = 0
+    for i in player.equipment.values():
+        if i.armor_class:
+            armor += i.armor_class
+
+    damage_reduction = (armor + 1) / ((armor + 1) + base)
     dmg = damage*(1 - damage_reduction)
     dmg = round(dmg)
-    player.stats["Health"] -= dmg
+    player.currentHealth -= dmg
     return dmg
 
 def checkPlayerStatus(player: Player):
     if player.statusEffects["poison"][0] > 0:
-        player.stats["Health"] -= player.statusEffects["poison"][1]
+        player.currentHealth -= player.statusEffects["poison"][1]
         player.statusEffects["poison"][0] -= 1
     if player.statusEffects["bleed"][0] > 0:
-        player.stats["Health"] *= player.statusEffects["bleed"][1]/100
+        player.currentHealth *= player.statusEffects["bleed"][1]/100
         player.statusEffects["bleed"][0] -= 1
-    player.stats["Health"] = round(player.stats["Health"])
-    if player.stats["Health"] <= 0:
+    player.currentHealth = round(player.currentHealth)
+    if player.currentHealth <= 0:
         player.alive = False
 
 
 def combatInitiated(player: Player, hostileEntity):
     pTurn = True  # checks if it's player's turn
-    pWeapon = None
-    for i in player.inventory:
-        if i.item_type == "weapon":
-            pWeapon = i
-
+    pWeapon = player.equipment["weapon"]
     mob: Mob = hostileEntity
     while True:
         if pTurn:
