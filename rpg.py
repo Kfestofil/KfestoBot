@@ -30,6 +30,9 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.afkTimer = datetime.datetime.now()
         self.currentHealth = 100
         self.currentMana = 100
+        self.level = 1
+        self.exp = 0
+        self.statPoints = 0
         self.stats = {  # placeholder, we probably doin this next
             "Max Health" : 100,
             "Max Mana" : 100,
@@ -37,9 +40,6 @@ class Player:  # The most important class in the entire game, has all the stuff 
             "Spd" : 10,
             "Str" : 10,
             "Dex" : 10,
-            "Level" : 1,
-            "Exp" : 0,
-            "StatPoints" : 0
         }
         self.statusEffects = {
             "poison" : [0,0], #[duration, damage]
@@ -348,10 +348,22 @@ def render(viewport = []):  # Renders a prepareRender viewport, basically a stri
 
 def menu1(player: Player):  # Returns a discord embed for the character menu
     stats = ''
+    levelStats = ''
+
+    levelStats += f"Level: `{player.level}`\nExperience: `{player.exp}`\nStat Points: `{player.statPoints}`"
+
+    armor = 0
+    for i in player.equipment.values():
+        try:
+            armor += i.armor_class
+        except AttributeError:
+            continue
     for stat in player.stats.keys():
-        stats += f"{stat}: {player.stats[stat]}\n"
+        stats += f"{stat}: `{player.stats[stat]}`\n"
+    stats += f"Armor: `{armor}`"
     username = player.interaction.user.display_name
     embed = embeds.Embed(title=username + "'s Character", color=0xe80046)
+    embed.add_field(name="Progress", value=levelStats, inline=False)
     embed.add_field(name="Stats", value=stats, inline=False)
     return embed
 
@@ -410,7 +422,7 @@ def menuFight(player: Player, enemy: Mob):
 
 def menu3(player: Player):  # Returns the embed for Inventory menu
     embed = embeds.Embed(title="Inventory", color=0xe80046)
-    stats = f"HP: {player.currentHealth}, MP: {player.currentMana}"
+    stats = f"HP: `{player.currentHealth}`, MP: `{player.currentMana}`"
     sel = player.menuSelection
     text = ""
     texte = ""
@@ -485,8 +497,10 @@ def takeDamage(player: Player, damage, base=100):
     #     player.stats["Armor"] = 0
     armor = 0
     for i in player.equipment.values():
-        if i.armor_class:
+        try:
             armor += i.armor_class
+        except AttributeError:
+            continue
 
     damage_reduction = (armor + 1) / ((armor + 1) + base)
     dmg = damage*(1 - damage_reduction)
@@ -534,13 +548,13 @@ def combatInitiated(player: Player, hostileEntity):
     player.tookAction.clear()
 
     if not mob.alive:
-        player.stats["Exp"] += mob.level
-        if player.stats["Level"] * 50 <= player.stats["Exp"]:
-            player.stats["Exp"] = 0
-            player.stats["Level"] += 1
-            player.stats["StatPoints"] += 3
+        player.exp += mob.level
+        if player.level * 50 <= player.exp:
+            player.exp = 0
+            player.level += 1
+            player.statPoints += 3
             print(player.ID)
-            print(player.stats["StatPoints"])
+            print(player.statPoints)
         dataMatrix[mob.position[0]][mob.position[1]]["Entity"] = None
         del mob
     if not player.alive:
