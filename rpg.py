@@ -52,7 +52,7 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.fightAction = 0  # 0 - awaiting action, 1 - attack, 2 - run, 3 - fight finished awaiting end, add more if necessary
         self.tookAction = Event()  # Read about python threading Events before doing something with this
         self.inventory: list[Item] = []
-        self.inventory.extend([new(items.Consumables.health_potion), new(items.Consumables.mana_potion)])
+        self.inventory.extend([new(items.Consumables.health_potion), new(items.Consumables.mana_potion),new(items.Boots.swift_shoes)])
         self.equipment = {
             "weapon" : new(items.Weapons.rusty_sword),
             "head" : new(items.Helmets.old_hat),
@@ -80,29 +80,29 @@ class Mob:
         self.expMultiplier = 1
 
         if self.mob_type == "zombie":
-            self.health = random.randint(190, 340)
+            self.health = random.randint(65, 115)
             self.attack = random.randint(9, 14)
         elif self.mob_type == "vampire":
-            self.health = random.randint(240, 440)
+            self.health = random.randint(80, 150)
             self.attack = random.randint(19, 29)
             self.expMultiplier = 2
         elif self.mob_type == "skeleton":
-            self.health = random.randint(140, 240)
+            self.health = random.randint(50, 80)
             self.attack = random.randint(14, 19)
         elif self.mob_type == "bear":
-            self.health = random.randint(240, 440)
+            self.health = random.randint(80, 150)
             self.attack = random.randint(24, 34)
             self.expMultiplier = 3
         elif self.mob_type == "pumpkin_zombie":
-            self.health = random.randint(240, 400)
+            self.health = random.randint(80, 135)
             self.attack = random.randint(12, 18)
             self.expMultiplier = 1.5
         elif self.mob_type == "rice_snake":
-            self.health = random.randint(100, 160)
+            self.health = random.randint(35, 55)
             self.attack = random.randint(12, 18)
             self.expMultiplier = 0.8
         elif self.mob_type == "jellyfish":
-            self.health = random.randint(120, 200)
+            self.health = random.randint(40, 70)
             self.attack = random.randint(16, 22)
         else:
             self.health = 0
@@ -366,6 +366,7 @@ def menu1(player: Player):  # Returns a discord embed for the character menu
             armor += i.armor_class
         except AttributeError:
             continue
+    #not sure how to do this for speed on boots in items.py(swift_shoes)
     for stat in player.stats.keys():
         stats += f"{stat}: `{player.stats[stat]}`\n"
     stats += f"Armor: `{armor}`"
@@ -491,8 +492,8 @@ def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
     return mob_count
 
 
-def weaponAttack(weapon: Item, player: Player, entity: Mob, base=10):
-    strModifier = (((player.stats["Str"] / 2) + 1 ) / ((player.stats["Str"] / 2) + 1) + base) + 1
+def weaponAttack(weapon: Item, player: Player, entity: Mob, base=100):
+    strModifier = (player.stats["Str"] + 1 ) / ((player.stats["Str"] + 1) + base) + 1
     weaponDmg = strModifier * weapon.damage
     weaponDmg = round(weaponDmg)
     entity.health -= weaponDmg
@@ -556,7 +557,7 @@ def combatInitiated(player: Player, hostileEntity):
     player.tookAction.clear()
 
     if not mob.alive:
-        player.exp += math.floor(mob.level * mob.expMultiplier)
+        player.exp += math.ceil(mob.level * mob.expMultiplier)
         if player.level * 50 <= player.exp:
             player.exp = 0
             player.level += 1
