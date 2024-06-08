@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import math
 import random
 import items
 import copy
@@ -76,27 +77,32 @@ class Mob:
         self.alive = True
         self.position = position
         self.lastAction = [f"{mob_type.capitalize()} is ready to kick your ass!", ""]  # the first field is text in bold, the second one is under it
+        self.expMultiplier = 1
 
         if self.mob_type == "zombie":
-            self.health = random.randint(95, 170)
+            self.health = random.randint(190, 340)
             self.attack = random.randint(9, 14)
         elif self.mob_type == "vampire":
-            self.health = random.randint(120, 220)
+            self.health = random.randint(240, 440)
             self.attack = random.randint(19, 29)
+            self.expMultiplier = 2
         elif self.mob_type == "skeleton":
-            self.health = random.randint(70, 120)
+            self.health = random.randint(140, 240)
             self.attack = random.randint(14, 19)
         elif self.mob_type == "bear":
-            self.health = random.randint(120, 220)
+            self.health = random.randint(240, 440)
             self.attack = random.randint(24, 34)
+            self.expMultiplier = 3
         elif self.mob_type == "pumpkin_zombie":
-            self.health = random.randint(100, 180)
-            self.attack = random.randint(10, 16)
-        elif self.mob_type == "rice_snake":
-            self.health = random.randint(50, 80)
+            self.health = random.randint(240, 400)
             self.attack = random.randint(12, 18)
+            self.expMultiplier = 1.5
+        elif self.mob_type == "rice_snake":
+            self.health = random.randint(100, 160)
+            self.attack = random.randint(12, 18)
+            self.expMultiplier = 0.8
         elif self.mob_type == "jellyfish":
-            self.health = random.randint(60, 100)
+            self.health = random.randint(120, 200)
             self.attack = random.randint(16, 22)
         else:
             self.health = 0
@@ -550,7 +556,7 @@ def combatInitiated(player: Player, hostileEntity):
     player.tookAction.clear()
 
     if not mob.alive:
-        player.exp += mob.level
+        player.exp += math.floor(mob.level * mob.expMultiplier)
         if player.level * 50 <= player.exp:
             player.exp = 0
             player.level += 1
