@@ -354,22 +354,32 @@ def render(viewport = []):  # Renders a prepareRender viewport, basically a stri
     return text
 
 
+def countPlayerStats(player: Player):
+    stats = {}
+    stats.update(player.stats)
+    stats.update({"Armor" : 0, "Resistance" : 0})
+    for i in player.equipment.values():
+        i: Item
+        for key in stats.keys():
+            stats[key] += i.stats[key]
+    return stats
+
+
 def menu1(player: Player):  # Returns a discord embed for the character menu
     stats = ''
     levelStats = ''
-
     levelStats += f"Level: `{player.level}`\nExperience: `{player.exp}`\nStat Points: `{player.statPoints}`"
+    # armor = 0
+    # for i in player.equipment.values():
+    #     try:
+    #         armor += i.Armor
+    #     except AttributeError:
+    #         continue
 
-    armor = 0
-    for i in player.equipment.values():
-        try:
-            armor += i.armor_class
-        except AttributeError:
-            continue
-    #not sure how to do this for speed on boots in items.py(swift_shoes)
-    for stat in player.stats.keys():
-        stats += f"{stat}: `{player.stats[stat]}`\n"
-    stats += f"Armor: `{armor}`"
+    statdict = countPlayerStats(player)
+
+    for stat in statdict.keys():
+        stats += f"{stat}: `{statdict[stat]}`\n"
     username = player.interaction.user.display_name
     embed = embeds.Embed(title=username + "'s Character", color=0xe80046)
     embed.add_field(name="Progress", value=levelStats, inline=False)
@@ -504,12 +514,14 @@ def weaponAttack(weapon: Item, player: Player, entity: Mob, base=100):
 def takeDamage(player: Player, damage, base=100):
     # if player.stats["Armor"] < 0:
     #     player.stats["Armor"] = 0
-    armor = 0
-    for i in player.equipment.values():
-        try:
-            armor += i.armor_class
-        except AttributeError:
-            continue
+    # armor = 0
+    # for i in player.equipment.values():
+    #     try:
+    #         armor += i.Armor
+    #     except AttributeError:
+    #         continue
+    statdict = countPlayerStats(player)
+    armor = statdict["Armor"]
 
     damage_reduction = (armor + 1) / ((armor + 1) + base)
     dmg = damage*(1 - damage_reduction)

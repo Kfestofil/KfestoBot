@@ -3,11 +3,21 @@ class Item:  # The Item class, use it when adding stuff to player inv
     def __init__(self, item_type: str, name: str, **kwargs):
         self.item_type = item_type
         self.name = name
+        self.stats = {  # stat bonuses
+            "Max Health": 0,
+            "Max Mana": 0,
+            "Int": 0,
+            "Spd": 0,
+            "Str": 0,
+            "Dex": 0,
+            "Armor" : 0,
+            "Resistance" : 0,
+        }
 
         # Define attribute mappings based on item type
         attribute_map = {
             "weapon": ["damage", "slot"],
-            "equipment": ["armor_class", "slot"],
+            "equipment": ["slot"],
             "consumable": ["effect", "duration"]
         }
 
@@ -17,8 +27,12 @@ class Item:  # The Item class, use it when adding stuff to player inv
                 if attr in kwargs:
                     setattr(self, attr, kwargs[attr])
                 else:
-                    print("(RPG) AN ITEM WAS CREATED WITHOUT PROPER ATTRIBUTES")
+                    print("(RPG) AN ITEM WAS CREATED WITHOUT ALL ATTRIBUTES")
                     setattr(self, attr, None)
+
+        for key in kwargs:  # Set the stat bonuses dictionary
+            if key in self.stats.keys():
+                self.stats[key] = kwargs[key]
 
 
 # EQUIPEMENT NAMING SCHEME: ALL non-capital LETTERS, USE UNDERSCORES, NO ABBREVIATIONS,
@@ -39,28 +53,28 @@ class Weapons:
                                   "The Ender of Universes", damage=69420, slot="weapon")
 
 class Helmets:
-    old_hat = Item("equipment", "Old Hat", armor_class=0, slot="head")
-    leather_cap = Item("equipment", "Leather Cap", armor_class=2, slot="head")
-    iron_helmet = Item("equipment", "Iron Helmet", armor_class=4, slot="head")
-    steel_helm = Item("equipment", "Steel Helm", armor_class=6, slot="head")
-    mystical_hood = Item("equipment", "Mystical Hood", armor_class=3, slot="head", elemental_resistance=5) #ignore for now, will add later
+    old_hat = Item("equipment", "Old Hat", Armor=0, slot="head")
+    leather_cap = Item("equipment", "Leather Cap", Armor=2, slot="head")
+    iron_helmet = Item("equipment", "Iron Helmet", Armor=4, slot="head")
+    steel_helm = Item("equipment", "Steel Helm", Armor=6, slot="head")
+    mystical_hood = Item("equipment", "Mystical Hood", Armor=3, slot="head", Resistance=5) #ignore for now, will add later
     fishelm = Item("equipment", "Fishelm, The protector of the weak, "
                                 "The Light in the Dark, "
-                                "The Last Hope", armor_class=1337, slot="head")
+                                "The Last Hope", Armor=1337, slot="head")
 class Chestplates:
-    ragged_tunic = Item("equipment", "Ragged Tunic", armor_class=0, slot="chest")
-    leather_armor = Item("equipment", "Leather Armor", armor_class=2, slot="chest")
-    chainmail_vest = Item("equipment", "Chainmail Vest", armor_class=4, slot="chest")
-    plate_armor = Item("equipment", "Plate Armor", armor_class=6, slot="chest")
+    ragged_tunic = Item("equipment", "Ragged Tunic", Armor=0, slot="chest")
+    leather_armor = Item("equipment", "Leather Armor", Armor=2, slot="chest")
+    chainmail_vest = Item("equipment", "Chainmail Vest", Armor=4, slot="chest")
+    plate_armor = Item("equipment", "Plate Armor", Armor=6, slot="chest")
 class Pants:
-    tattered_pants = Item("equipment", "Tattered Pants", armor_class=0, slot="pants")
-    leather_leggings = Item("equipment", "Leather Leggings", armor_class=1, slot="pants")
-    chainmail_leggings = Item("equipment", "Chainmail Leggings", armor_class=3, slot="pants")
-    steel_greaves = Item("equipment", "Steel Greaves", armor_class=5, slot="pants")
-    mystic_trousers = Item("equipment", "Mystic Trousers", armor_class=2, slot="pants", elemental_resistance=5) #ignore for now, will add later
+    tattered_pants = Item("equipment", "Tattered Pants", Armor=0, slot="pants")
+    leather_leggings = Item("equipment", "Leather Leggings", Armor=1, slot="pants")
+    chainmail_leggings = Item("equipment", "Chainmail Leggings", Armor=3, slot="pants")
+    steel_greaves = Item("equipment", "Steel Greaves", Armor=5, slot="pants")
+    mystic_trousers = Item("equipment", "Mystic Trousers", Armor=2, slot="pants", Resistance=5) #ignore for now, will add later
 class Boots:
-    simple_sandals = Item("equipment", "Simple Sandals", armor_class=0, slot="boots")
-    leather_boots = Item("equipment", "Leather Boots", armor_class=1, slot="boots")
-    iron_sabatons = Item("equipment", "Iron Sabatons", armor_class=3, slot="boots")
-    steel_boots = Item("equipment", "Steel Boots", armor_class=4, slot="boots")
-    swift_shoes = Item("equipment", "Swift Shoes", armor_class=2, slot="boots", speed=5) #boosts speed stat on player
+    simple_sandals = Item("equipment", "Simple Sandals", Armor=0, slot="boots")
+    leather_boots = Item("equipment", "Leather Boots", Armor=1, slot="boots")
+    iron_sabatons = Item("equipment", "Iron Sabatons", Armor=3, slot="boots")
+    steel_boots = Item("equipment", "Steel Boots", Armor=4, slot="boots")
+    swift_shoes = Item("equipment", "Swift Shoes", Armor=2, slot="boots", Spd=5) #boosts speed stat on player
