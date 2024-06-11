@@ -60,9 +60,6 @@ class Player:  # The most important class in the entire game, has all the stuff 
             "pants" : new(items.Pants.tattered_pants),
             "boots" : new(items.Boots.simple_sandals),
         }
-        print ("xd")
-        items.Weapons.rusty_sword.damage = 0
-        print("xd2")
 
         if interaction.user.id == 490793326476263434:
             self.inventory.append(new(items.Weapons.divine_blade_of_kfestofil))
