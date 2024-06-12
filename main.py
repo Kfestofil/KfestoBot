@@ -523,13 +523,18 @@ async def updateRender(player: rpg.Player):
 async def refreshRenderLoop(player: rpg.Player):  # SHOULD NOT BE CALLED ANYWHERE BESIDES THE JOIN FUNCTION
     while abs((datetime.datetime.now() - player.afkTimer).seconds) < 300:
         if not player.awaitingDeletion:
-            await updateRender(player)
+            try:
+                await updateRender(player)
+            except discord.NotFound:
+                print("(RPG) Nothing to refresh")
             await asyncio.sleep(1)
         else:
             break
 
     print(f"(RPG) Killed {player.interaction.user.display_name} using render loop")
-    await disconnectPlayer(player)
+    try:
+        await disconnectPlayer(player)
+    except ValueError: print("(RPG) tried disconnecting second time")
 
 # async def rpgInput(inputStr: str, player: rpg.Player):  # Old way to handle inputs
 #     for c in inputStr:
@@ -552,7 +557,7 @@ async def disconnectPlayer(player: rpg.Player):
         msg = await player.interaction.original_response()
         await msg.delete()
     except:
-        print("(RPG) the game message was lost")
+        print("(RPG) the game message was lost or this is called a second time")
     player.awaitingDeletion = True
     playerList.remove(player)
 
