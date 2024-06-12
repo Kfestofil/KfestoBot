@@ -521,15 +521,19 @@ async def updateRender(player: rpg.Player):
 
 
 async def refreshRenderLoop(player: rpg.Player):  # SHOULD NOT BE CALLED ANYWHERE BESIDES THE JOIN FUNCTION
-    while abs((datetime.datetime.now() - player.afkTimer).seconds) < 300:
-        if not player.awaitingDeletion:
-            try:
-                await updateRender(player)
-            except discord.NotFound:
-                print("(RPG) Nothing to refresh")
-            await asyncio.sleep(1)
-        else:
-            break
+    afkTimeout = False
+    while not afkTimeout and not player.awaitingDeletion:
+        try:
+            await updateRender(player)
+        except discord.NotFound:
+            print("(RPG) Nothing to refresh")
+        await asyncio.sleep(1)
+
+        if abs((datetime.datetime.now() - player.afkTimer).seconds) > 300: afkTimeout = True
+
+    if afkTimeout:
+        rpg.savePlayerData(player)
+        print("(RPG) saved data for a timeouted player")
 
     print(f"(RPG) Killed {player.interaction.user.display_name} using render loop")
     try:
