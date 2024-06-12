@@ -593,6 +593,7 @@ async def rpg_leave(interaction: discord.Interaction):
     was = False  # The thing checking if you were there in the first place
     for pl in playerList:
         if pl.ID == playerID:
+            rpg.savePlayerData(pl)
             await disconnectPlayer(pl)
             was = True
             await interaction.response.send_message("Disconnected from the game!", ephemeral=True)

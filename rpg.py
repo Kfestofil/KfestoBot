@@ -4,6 +4,8 @@ import math
 import random
 import items
 import copy
+import sqlite3
+import json
 from PIL import Image
 from discord import Interaction
 from threading import Thread
@@ -282,11 +284,61 @@ def loadMobZonesFile(file: str):  # Loads a mob zones file into a mobSpawnMatrix
     matrix = add_border_to_matrix(matrix, True)
     return matrix
 
+
+def savePlayerData(player: Player):  # Saves all(?) player data into the database, idfk how to do this properly tho
+    id = player.ID
+    posX = player.position[0]
+    posY = player.position[1]
+    currentHealth = player.currentHealth
+    currentMana = player.currentMana
+    stats = json.dumps(player.stats)
+    statusEffects = json.dumps(player.statusEffects)
+    inventoryItems = []
+    for i in player.inventory:
+        item = {}
+        for attr in vars(i):
+            item.update({attr: getattr(i, attr)})
+        inventoryItems.append(item)
+    inventory = json.dumps(inventoryItems)
+    equipmentItems = {}
+    for i in player.equipment.keys():
+        obj = player.equipment[i]
+        item = {}
+        for attr in vars(obj):
+            item.update({attr: getattr(obj, attr)})
+
+        equipmentItems.update({i: item})
+    equipment = json.dumps(equipmentItems)  # format the things ^
+
+    def escape_quotes(s: str):  # convert json strings so sql can take them in. By ChatGPT™
+        return s.replace('"', '""')
+
+    stats = escape_quotes(stats)
+    statusEffects = escape_quotes(statusEffects)
+    inventory = escape_quotes(inventory)
+    equipment = escape_quotes(equipment)
+
+
+    db = sqlite3.connect("saveData.db")
+    cursor = db.cursor()
+    sql = f'''INSERT INTO players (discordID, posX, posY, currentHealth, currentMana, stats, statusEffects, inventory, equipment)
+          VALUES ({id}, {posX}, {posY}, {currentHealth}, {currentMana}, "{stats}", "{statusEffects}", "{inventory}", "{equipment}")
+          ON CONFLICT(discordID) DO UPDATE SET
+          posX = {posX}, posY = {posY}, currentHealth = {currentHealth},
+          currentMana = {currentMana}, stats = "{stats}",
+          statusEffects = "{statusEffects}", inventory = "{inventory}",
+          equipment = "{equipment}"'''
+    cursor.execute(sql)
+    db.commit()  # Save into the database ^
+
+
 dataMatrix = loadMapFile('Map.bmp', True)
 miniMatrix = loadMapFile('miniMap.bmp', False)
 mobSpawnMatrix = loadMobZonesFile("Map1 mob spawns.bmp")
 
-# with open("rpgDataMatrix.txt", 'w') as file:  # Saving the data if we ever need it
+playerSave = sqlite3.connect("saveData.db")
+
+# with open("rpgDataMatrix.txt", 'w') as file:  # Saving the data if we ever need it (we won't)
 #     for y in range(dimensions[1]):
 #         file.write('\n')
 #         for x in range(dimensions[0]):
