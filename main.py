@@ -578,6 +578,7 @@ async def rpg_join(interaction: discord.Interaction):
             if pl.ID == playerID: new = False  # make sure they can join only once
         if new:
             player = rpg.Player(playerID, interaction)
+            rpg.loadPlayerData(player)
             playerList.append(player)
             v = RpgMainButtons(player)  # initial message view (buttons)
             msg = await player.interaction.original_response()

@@ -30,9 +30,12 @@ class Item:  # The Item class, use it when adding stuff to player inv
                     print("(RPG) AN ITEM WAS CREATED WITHOUT ALL ATTRIBUTES")
                     setattr(self, attr, None)
 
-        for key in kwargs:  # Set the stat bonuses dictionary
-            if key in self.stats.keys():
-                self.stats[key] = kwargs[key]
+        if 'stats' in kwargs:  # loading item
+            self.stats = kwargs['stats']
+        else:  # creating new
+            for key in kwargs:  # Set the stat bonuses dictionary
+                if key in self.stats.keys():
+                    self.stats[key] = kwargs[key]
 
 
 # EQUIPEMENT NAMING SCHEME: ALL non-capital LETTERS, USE UNDERSCORES, NO ABBREVIATIONS,

@@ -19,7 +19,7 @@ def new(item: Item):
 
 
 class Player:  # The most important class in the entire game, has all the stuff related to a player in the game
-    def __init__(self, discordID: int, interaction: Interaction, position =[160,46]):  # default pos is 256,256
+    def __init__(self, discordID: int, interaction: Interaction, position=[160,46]):  # default pos is 256,256
         self.screen = "main"  # main, menu[1,2,...], map
         self.awaitingDeletion = False
         self.ID = discordID
@@ -36,7 +36,7 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.level = 1
         self.exp = 0
         self.statPoints = 0
-        self.stats = {  # placeholder, we probably doin this next
+        self.stats = {
             "Max Health" : 100,
             "Max Mana" : 100,
             "Int" : 10,
@@ -330,6 +330,46 @@ def savePlayerData(player: Player):  # Saves all(?) player data into the databas
           equipment = "{equipment}"'''
     cursor.execute(sql)
     db.commit()  # Save into the database ^
+
+
+def loadPlayerData(player: Player):
+    id = player.ID
+
+    db = sqlite3.connect("saveData.db")
+    cursor = db.cursor()
+    cursor.execute(f"SELECT * FROM players WHERE discordID = {id}")
+    results = cursor.fetchall()
+    was = False
+    # Process the results
+    for row in results:
+        posX = row[1]
+        posY = row[2]
+        currentHealth = row[3]
+        currentMana = row[4]
+        stats = row[5]
+        statusEffects = row[6]
+        inventory = row[7]
+        equipment = row[8]
+        was = True
+
+    if was:
+        player.position=[posX,posY]
+        player.currentHealth = currentHealth
+        player.currentMana = currentMana
+
+        player.stats = json.loads(stats)
+        player.statusEffects = json.loads(statusEffects)
+
+        invItems = []
+        for item in json.loads(inventory):
+            invItems.append(Item(**item))
+        player.inventory = invItems
+        eqItems = {}
+        for item in json.loads(equipment):
+            eqItems[item] = Item(**(json.loads(equipment)[item]))
+        player.equipment = eqItems
+
+
 
 
 dataMatrix = loadMapFile('Map.bmp', True)
