@@ -318,7 +318,6 @@ def savePlayerData(player: Player):  # Saves all(?) player data into the databas
     inventory = escape_quotes(inventory)
     equipment = escape_quotes(equipment)
 
-
     db = sqlite3.connect("saveData.db")
     cursor = db.cursor()
     sql = f'''INSERT INTO players (discordID, posX, posY, currentHealth, currentMana, stats, statusEffects, inventory, equipment)
@@ -352,7 +351,7 @@ def loadPlayerData(player: Player):
         equipment = row[8]
         was = True
 
-    if was:
+    if was:  # Actually load them into player
         player.position=[posX,posY]
         player.currentHealth = currentHealth
         player.currentMana = currentMana
@@ -370,19 +369,9 @@ def loadPlayerData(player: Player):
         player.equipment = eqItems
 
 
-
-
 dataMatrix = loadMapFile('Map.bmp', True)
 miniMatrix = loadMapFile('miniMap.bmp', False)
 mobSpawnMatrix = loadMobZonesFile("Map1 mob spawns.bmp")
-
-playerSave = sqlite3.connect("saveData.db")
-
-# with open("rpgDataMatrix.txt", 'w') as file:  # Saving the data if we ever need it (we won't)
-#     for y in range(dimensions[1]):
-#         file.write('\n')
-#         for x in range(dimensions[0]):
-#             file.write(str(str(x) + ', ' + str(y) + ' ' + str(dataMatrix[x][y]) + ' '))
 
 playerList: list[Player] = []
 

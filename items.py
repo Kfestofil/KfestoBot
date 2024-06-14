@@ -38,7 +38,7 @@ class Item:  # The Item class, use it when adding stuff to player inv
                     self.stats[key] = kwargs[key]
 
 
-# EQUIPEMENT NAMING SCHEME: ALL non-capital LETTERS, USE UNDERSCORES, NO ABBREVIATIONS,
+# EQUIPMENT NAMING SCHEME: ALL non-capital LETTERS, USE UNDERSCORES, NO ABBREVIATIONS,
 # REMEMBER TO ALWAYS CALL THE new() FUNCTION WHEN GIVING ITEMS TO PLAYERS
 class Consumables:
     health_potion = Item("consumable", "Health Potion", effect="heal", duration=5)
