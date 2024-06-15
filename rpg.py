@@ -352,7 +352,9 @@ def loadPlayerData(player: Player):
         was = True
 
     if was:  # Actually load them into player
+        dataMatrix[player.position[0]][player.position[1]]["Entity"] = None
         player.position=[posX,posY]
+        dataMatrix[posX][posY]["Entity"] = player
         player.currentHealth = currentHealth
         player.currentMana = currentMana
 
