@@ -46,7 +46,10 @@ class Player:  # The most important class in the entire game, has all the stuff 
         }
         self.statusEffects = {
             "poison" : [0,0], #[duration, damage]
-            "bleed" : [0,0] #[duration, %damage]
+            "bleed" : [0,0], #[duration, %damage]
+            "riposte" : [0,0], #[duration, damage reflection multiplier]
+            "stun" : [0], #[duration] - unable to use abilities
+            "disarm": [0],  #[duration] - unable to attack
         }
         self.alive = True
         self.menuSelection = 0
@@ -62,6 +65,10 @@ class Player:  # The most important class in the entire game, has all the stuff 
             "pants" : new(items.Pants.tattered_pants),
             "boots" : new(items.Boots.simple_sandals),
         }
+        self.hpMultiplier = 1
+        self.armorMultiplier = 1
+        self.potionUses = 1
+        self.classes = []
 
         if interaction.user.id == 490793326476263434:
             self.inventory.append(new(items.Weapons.divine_blade_of_kfestofil))
@@ -112,6 +119,65 @@ class Mob:
         self.attack *= self.levelMultiplier
         self.health = round(self.health)
 
+        self.statusEffects = {
+            "poison": [0, 0],  # [duration, damage]
+            "bleed": [0, 0],  # [duration, %current hp damage]
+            "stun": [0], # duration - unable to use abilities
+            "disarm": [0], # duration - unable to attack
+        }
+class Knight:
+    def __init__(self):
+        self.HostileMob = None
+        self.hpMultiplier *= 1.2
+        self.armorMultiplier *= 1.2
+        self.abilities = ["riposte","pommelstrike","grapple"]
+        # keep ability names in the ability list fully lowercase, unless you plan on changing every single one's name to your liking
+        # I honestly don't mind as long as it keeps a coherent structure
+
+    def Riposte(self):
+        self.statusEffects["riposte"] = [1,1.5]
+        #not sure how to do cd yet[15]
+    def PommelStrike(self):
+        self.HostileMob.statusEffects["stun"][0] += 1
+        #call normal attack function with damage mod = 0.9x
+        #insert cd here[6]
+    def Grapple(self):
+        self.HostileMob.statusEffects["stun"][0] += 1
+        self.HostileMob.statusEffects["disarm"][0] += 1
+        #insert cd here[10]
+
+class Cleric:
+    def __init__(self):
+        self.HostileMob = None
+        self.potionUses += 1
+        self.hpMultiplier *= 1.1
+        #self.dmgAgainstUndeadMultiplier *= 1.5
+        self.abilities = ["minor_heal","smite"]
+    def Minor_Heal(self):
+        if self.currentMana >= 80:
+            self.currentHealth += self.stats["Int"]
+            if self.currentHealth >= self.stats["Max Health"]:
+                self.currentHealth = self.stats["Max Health"]
+        #insert cd here[4]
+        else:
+            print("Not enough mana to cast [MINOR HEAL]")
+
+    def Smite(self):
+        if self.currentMana >= 20:
+            self.HostileMob.health -= self.stats["Int"]*0.7
+            weaponAttack(self.equipment["weapon"],self,mob,DmgMultiplier=0.7)
+        #insert cd here[1]
+        else:
+            print("Not enough mana to cast [SMITE]")
+
+class Mage:
+    def __init__(self):
+        self.HostileMob = None
+        self.abilities = []
+    def Frost_Strike(self):
+        if self.currentMana >= 20:
+            self.HostileMob.health -= self.stats["Int"]
+            self.HostileMob.statusEffects["Stun"][0] += math.floor(self.stats["Int"]/10)
 
 
 
@@ -375,6 +441,14 @@ dataMatrix = loadMapFile('Map.bmp', True)
 miniMatrix = loadMapFile('miniMap.bmp', False)
 mobSpawnMatrix = loadMobZonesFile("Map1 mob spawns.bmp")
 
+playerSave = sqlite3.connect("saveData.db")
+
+# with open("rpgDataMatrix.txt", 'w') as file:  # Saving the data if we ever need it (we won't)
+#     for y in range(dimensions[1]):
+#         file.write('\n')
+#         for x in range(dimensions[0]):
+#             file.write(str(str(x) + ', ' + str(y) + ' ' + str(dataMatrix[x][y]) + ' '))
+
 playerList: list[Player] = []
 
 
@@ -582,13 +656,11 @@ def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
     return mob_count
 
 
-def weaponAttack(weapon: Item, player: Player, entity: Mob, base=100):
+def weaponAttack(weapon: Item, player: Player, entity: Mob,*,base=100,DmgMultiplier=1):
     strModifier = (player.stats["Str"] + 1 ) / ((player.stats["Str"] + 1) + base) + 1
-    weaponDmg = strModifier * weapon.damage
+    weaponDmg = strModifier * weapon.damage * DmgMultiplier
     weaponDmg = round(weaponDmg)
     entity.health -= weaponDmg
-    if entity.health <= 0:
-        entity.alive = False
 
 
 def takeDamage(player: Player, damage, base=100):
@@ -632,7 +704,7 @@ def combatInitiated(player: Player, hostileEntity):
                 action = player.fightAction
                 if action == 1:
                     weaponAttack(pWeapon, player, mob)
-                    if not mob.alive: break
+                    if mob.health<=0: break
                 if action == 2:
                     break
             player.tookAction.clear()
@@ -648,7 +720,7 @@ def combatInitiated(player: Player, hostileEntity):
             pTurn = True
     player.tookAction.clear()
 
-    if not mob.alive:
+    if mob.health<=0:
         player.exp += math.ceil(mob.level * mob.expMultiplier)
         if player.level * 50 <= player.exp:
             player.exp = 0
