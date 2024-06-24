@@ -45,8 +45,13 @@ class Player:  # The most important class in the entire game, has all the stuff 
             "Dex" : 10,
         }
         self.statusEffects = {
-            "poison" : [0,0], #[duration, damage]
-            "bleed" : [0,0] #[duration, %damage]
+            "poison" : 0, #[duration] - 10 damage
+            "bleed" : 0, #[duration] - 5% currentHp as damage
+            "stun" : 0, #[duration] - unable to use abilities
+            "disarm": 0,  #[duration] - unable to attack
+            "ignite": 0, #[duration] - deals 5 damage per stack
+            "riposte": 0, #[stacks] - reflects 1.5x damage taken
+            "dodge": 0 #[duration & stacks] - dodges the next attack
         }
         self.alive = True
         self.menuSelection = 0
@@ -62,6 +67,12 @@ class Player:  # The most important class in the entire game, has all the stuff 
             "pants" : new(items.Pants.tattered_pants),
             "boots" : new(items.Boots.simple_sandals),
         }
+        self.hpMultiplier = 1
+        self.armorMultiplier = 1
+        self.potionUses = 1
+        self.classes = []
+        self.abilities = [] #in case we plan on giving the base player abilities from quests
+        # also abilities are dictionaries with the ability name(string) connected to the ability cooldown(int)
 
         if interaction.user.id == 490793326476263434:
             self.inventory.append(new(items.Weapons.divine_blade_of_kfestofil))
@@ -112,7 +123,125 @@ class Mob:
         self.attack *= self.levelMultiplier
         self.health = round(self.health)
 
+        self.statusEffects = {
+            "poison": 0,  # [duration] 10 damage
+            "bleed": 0,  # [duration] 10% currentHp damage
+            "stun": 0,  # [duration] - unable to use abilities - not implemented
+            "disarm": 0,  # [duration] - unable to attack - not implemented
+            "ignite": 0,  # [duration] - deals 5 damage per stack
+            "riposte": 0  # [stacks] - reflects 1.5x damage taken
+        }
+class Knight:
+    def __init__(self):
+        self.HostileMob = None
+        self.abilities = {"riposte":0,"pommel_strike":0,"grapple":0}
 
+    def Riposte(self, player:Player):
+        player.statusEffects["riposte"] = 1
+        self.abilities["riposte"] += 16
+        return 1
+
+    def Pommel_Strike(self, player:Player):
+        self.HostileMob.statusEffects["stun"] += 1
+        weaponAttack(player.equipment["weapon"],player,self.HostileMob)
+        self.abilities["pommel_strike"] += 6
+        return 1
+
+    def Grapple(self):
+        self.HostileMob.statusEffects["stun"] += 1
+        self.HostileMob.statusEffects["disarm"] += 1
+        self.abilities["grapple"] += 11
+        return 1
+
+class Cleric:
+    def __init__(self):
+        self.HostileMob = None
+        self.abilities = {"minor_heal":0,"smite":0}
+    def Minor_Heal(player:Player):
+        if player.currentMana >= 80:
+            player.currentMana -= 80
+            player.currentHealth += player.stats["Int"]
+            if player.currentHealth >= player.stats["Max Health"]:
+                player.currentHealth = player.stats["Max Health"]
+            self.abilities["minor_heal"] += 5
+        else:
+            print("Not enough mana to cast [MINOR HEAL]")
+        return 1
+
+    def Smite(self, player:Player):
+        if player.currentMana >= 20:
+            player.currentMana -= 20
+            self.HostileMob.health -= player.stats["Int"]*0.7
+            weaponAttack(player.equipment["weapon"],player,self.HostileMob,DmgMultiplier=0.7)
+            self.abilities["smite"] += 2
+        else:
+            print("Not enough mana to cast [SMITE]")
+        return 1
+
+class Mage:
+    def __init__(self):
+        self.HostileMob = None
+        self.abilities = {"frost_strike":0,"mana_bolt":0}
+    def Frost_Strike(self, player:Player):
+        if player.currentMana >= 40:
+            player.currentMana -= 40
+            self.HostileMob.health -= player.stats["Int"]
+            self.HostileMob.statusEffects["Stun"] += math.floor(player.stats["Int"]/10)
+        return 1
+    def Mana_Bolt(self, player:Player):
+        player.currentMana += 25
+        if player.currentMana > player.stats["Max Mana"]:
+            player.currentMana = player.stats["Max Mana"]
+        weaponAttack(player.equipment["weapon"],player,self.HostileMob,ScalingStat=player.stats["Int"])
+        return 1
+
+class Ranger:
+    def __init__(self):
+        self.HostileMob = None
+        self.Swiftness = 0
+        # Fire twice if it's 3 or more
+        # Can be used to swap ammo without losing a turn
+        self.AmmoType = 0
+        # 0 = normal ammo, 1 = applies poison, 2 = applies bleed, 3 = applies ignite
+        self.abilities = {"ammo_swap":0,"bow_shot":0}
+    def Ammo_Swap(self, chosenAmmo):
+        self.AmmoType = chosenAmmo
+        if self.Swiftness > 0:
+            self.Swiftness -= 1
+            return 0
+        else:
+            return 1
+    def Bow_Shot(self, player:Player): # this is definitely unoptimal
+        if self.Swiftness >= 3:
+            weaponAttack(player.equipment["weapon"],player,self.HostileMob,DmgMultiplier=2,ScalingStat=round(player.stats["Str"] + player.stats["Spd"])/1.5)
+            if self.AmmoType == 1:
+                self.HostileMob.statusEffects["poison"] += 2
+            elif self.AmmoType == 2:
+                self.HostileMob.statusEffects["bleed"] += 2
+            elif self.AmmoType == 3:
+                self.HostileMob.statusEffects["ignite"] += 2
+        else:
+            weaponAttack(player.equipment["weapon"],player,self.HostileMob)
+            if self.AmmoType == 1:
+                self.HostileMob.statusEffects["poison"] += 1
+            elif self.AmmoType == 2:
+                self.HostileMob.statusEffects["bleed"] += 1
+            elif self.AmmoType == 3:
+                self.HostileMob.statusEffects["ignite"] += 1
+            self.Swiftness += 1;
+        return 1
+class Rogue:
+    def __init__(self):
+        self.HostileMob = None
+        self.abilities = {"dodge":0,"double_strike":0}
+    def Dodge(player:Player):
+        player.statusEffects["dodge"] +=1
+        self.abilities["dodge"] += 21
+        return 1
+    def Double_Strike(self, player:Player):
+        weaponAttack(player.equipment["weapon"],player,self.HostileMob,ScalingStat=player.stats["Dex"],DmgMultiplier=1.2)
+        self.abilities["double_strike"] += 2
+        return 1
 
 
 Tiles = {  # Dict containing the color mapping to the tile names
@@ -375,6 +504,7 @@ dataMatrix = loadMapFile('Map.bmp', True)
 miniMatrix = loadMapFile('miniMap.bmp', False)
 mobSpawnMatrix = loadMobZonesFile("Map1 mob spawns.bmp")
 
+
 playerList: list[Player] = []
 
 
@@ -582,13 +712,13 @@ def count_mobs_in_area(x, y, area_size=13, mob_limit=10):
     return mob_count
 
 
-def weaponAttack(weapon: Item, player: Player, entity: Mob, base=100):
-    strModifier = (player.stats["Str"] + 1 ) / ((player.stats["Str"] + 1) + base) + 1
-    weaponDmg = strModifier * weapon.damage
+def weaponAttack(weapon: Item, player: Player, entity: Mob,*,base=100,DmgMultiplier=1, ScalingStat = None):
+    if not ScalingStat:
+        ScalingStat = player.stats["Str"]
+    statModifier = (ScalingStat + 1 ) / ((ScalingStat + 1) + base) + 1
+    weaponDmg = statModifier * weapon.damage * DmgMultiplier
     weaponDmg = round(weaponDmg)
     entity.health -= weaponDmg
-    if entity.health <= 0:
-        entity.alive = False
 
 
 def takeDamage(player: Player, damage, base=100):
@@ -609,16 +739,35 @@ def takeDamage(player: Player, damage, base=100):
     player.currentHealth -= dmg
     return dmg
 
-def checkPlayerStatus(player: Player):
-    if player.statusEffects["poison"][0] > 0:
-        player.currentHealth -= player.statusEffects["poison"][1]
-        player.statusEffects["poison"][0] -= 1
-    if player.statusEffects["bleed"][0] > 0:
-        player.currentHealth *= player.statusEffects["bleed"][1]/100
-        player.statusEffects["bleed"][0] -= 1
-    player.currentHealth = round(player.currentHealth)
-    if player.currentHealth <= 0:
-        player.alive = False
+def checkEntityStatus(entity):
+    if type(entity) is Player:
+        if entity.statusEffects["poison"] > 0:
+            entity.currentHealth -= 10
+            entity.statusEffects["poison"] -= 1
+        if entity.statusEffects["bleed"] > 0:
+            entity.currentHealth *= 19 / 20
+            entity.statusEffects["bleed"] -= 1
+        if entity.statusEffects["ignite"] > 0:
+            entity.currentHealth -= entity.statusEffects["ignite"] * 2
+            entity.statusEffects["ignite"] -= 1
+        entity.currentHealth = round(entity.currentHealth)
+        if entity.currentHealth <= 0:
+            entity.alive = False
+    elif type(entity) is Mob:
+        if entity.statusEffects["poison"] > 0:
+            entity.health -= 10
+            entity.statusEffects["poison"] -= 1
+        if entity.statusEffects["bleed"] > 0:
+            entity.health *= 19 / 20
+            entity.statusEffects["bleed"] -= 1
+        if entity.statusEffects["ignite"] > 0:
+            entity.health -= entity.statusEffects["ignite"] * 2
+            entity.statusEffects["ignite"] -= 1
+        entity.health = round(entity.health)
+        if entity.health <= 0:
+            entity.alive = False
+    else:
+        print("This is neither a Player nor a Mob: checkEntityStatus")
 
 
 def combatInitiated(player: Player, hostileEntity):
@@ -627,28 +776,29 @@ def combatInitiated(player: Player, hostileEntity):
     mob: Mob = hostileEntity
     while True:
         if pTurn:
+            checkEntityStatus(player)
             flag = player.tookAction.wait(300)
             if flag:
                 action = player.fightAction
                 if action == 1:
                     weaponAttack(pWeapon, player, mob)
-                    if not mob.alive: break
+                    if mob.health<=0: break
                 if action == 2:
                     break
             player.tookAction.clear()
             pTurn = False
         else:
+            checkEntityStatus(mob)
             dmg = mob.attack
             dmg = takeDamage(player, dmg)
             mob.lastAction = [f"{mob.mob_type.capitalize()} attacked you!", f" it dealt {dmg} damage!"]
-            checkPlayerStatus(player)
             if not player.alive:
                 print(f"{player.interaction.user.display_name} just got killed")
                 break
             pTurn = True
     player.tookAction.clear()
 
-    if not mob.alive:
+    if mob.health<=0:
         player.exp += math.ceil(mob.level * mob.expMultiplier)
         if player.level * 50 <= player.exp:
             player.exp = 0
@@ -658,7 +808,7 @@ def combatInitiated(player: Player, hostileEntity):
             print(player.statPoints)
         dataMatrix[mob.position[0]][mob.position[1]]["Entity"] = None
         del mob
-    if not player.alive:
+    if player.currentHealth<=0:
         player.awaitingDeletion = True
 
     player.fightAction = 3
