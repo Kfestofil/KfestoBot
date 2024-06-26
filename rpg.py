@@ -157,7 +157,7 @@ class Cleric:
     def __init__(self):
         self.HostileMob = None
         self.abilities = {"minor_heal":0,"smite":0}
-    def Minor_Heal(player:Player):
+    def Minor_Heal(self, player:Player):
         if player.currentMana >= 80:
             player.currentMana -= 80
             player.currentHealth += player.stats["Int"]
@@ -234,12 +234,12 @@ class Rogue:
     def __init__(self):
         self.HostileMob = None
         self.abilities = {"dodge":0,"double_strike":0}
-    def Dodge(player:Player):
+    def Dodge(self, player:Player):
         player.statusEffects["dodge"] +=1
         self.abilities["dodge"] += 21
         return 1
     def Double_Strike(self, player:Player):
-        weaponAttack(player.equipment["weapon"],player,self.HostileMob,ScalingStat=player.stats["Dex"],DmgMultiplier=1.2)
+        weaponAttack(player.equipment["weapon"],player,self.HostileMob,ScalingStat=(player.stats["Dex"] + player.stats["Str"])/2,DmgMultiplier=1.2)
         self.abilities["double_strike"] += 2
         return 1
 
@@ -737,13 +737,13 @@ def takeDamage(player: Player, damage, base=100):
     #         armor += i.Armor
     #     except AttributeError:
     #         continue
-    statdict = countPlayerStats(player)
-    armor = statdict["Armor"]
-
-    damage_reduction = (armor + 1) / ((armor + 1) + base)
-    dmg = damage*(1 - damage_reduction)
-    dmg = round(dmg)
-    player.currentHealth -= dmg
+    if not player.statusEffects["dodge"]:
+        statdict = countPlayerStats(player)
+        armor = statdict["Armor"]
+        damage_reduction = (armor + 1) / ((armor + 1) + base)
+        dmg = damage*(1 - damage_reduction)
+        dmg = round(dmg)
+        player.currentHealth -= dmg
     return dmg
 
 def checkEntityStatus(entity):
@@ -799,6 +799,8 @@ def combatInitiated(player: Player, hostileEntity):
             dmg = mob.attack
             dmg = takeDamage(player, dmg)
             mob.lastAction = [f"{mob.mob_type.capitalize()} attacked you!", f" it dealt {dmg} damage!"]
+            if not player.statusEffects["Riposte"]:
+                weaponAttack(pWeapon, player, mob, DmgMultiplier=1.5)
             if not player.alive:
                 print(f"{player.interaction.user.display_name} just got killed")
                 break
