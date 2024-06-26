@@ -504,13 +504,6 @@ dataMatrix = loadMapFile('Map.bmp', True)
 miniMatrix = loadMapFile('miniMap.bmp', False)
 mobSpawnMatrix = loadMobZonesFile("Map1 mob spawns.bmp")
 
-playerSave = sqlite3.connect("saveData.db")
-
-# with open("rpgDataMatrix.txt", 'w') as file:  # Saving the data if we ever need it (we won't)
-#     for y in range(dimensions[1]):
-#         file.write('\n')
-#         for x in range(dimensions[0]):
-#             file.write(str(str(x) + ', ' + str(y) + ' ' + str(dataMatrix[x][y]) + ' '))
 
 playerList: list[Player] = []
 
