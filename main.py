@@ -24,6 +24,7 @@ tree = app_commands.CommandTree(client)
 Kfestofil: discord.User; Jammmann: discord.User; Brix: discord.User; Huf: discord.User  # declare quick access users
 
 RickRollTimer = datetime.datetime.min
+DS3Timer = datetime.datetime.min
 
 LastDMTimes = {}
 
@@ -250,7 +251,28 @@ async def rickrollkfestofil(interaction: discord.Interaction):
         await interaction.response.send_message(f'Sorry buddy, you still have '
                                                 f'{((3600 - (datetime.datetime.now() - RickRollTimer).seconds) / 60).__ceil__()} '
                                                 f'minutes until you can rickroll Kfestofil again!', ephemeral=True)
-
+@tree.command(
+    name="open_ds",
+    description="Opens Dark Souls 3, literally... 1h cooldown"
+)
+async def opends(interaction: discord.Interaction):
+    if interaction.user.id in ExludedIDs:
+        return
+    global DS3Timer
+    user = interaction.user
+    if (datetime.datetime.now() - DS3Timer).seconds >= 3600:
+        DS3Timer = datetime.datetime.now()
+        webbrowser.open('steam://rungameid/374320')
+        print(f"{user.display_name} made you play the best dark souls")
+        await interaction.response.send_message('Succesfully opened DS3 on the KfestoPC!')
+    else:
+        try:
+            print(f'({interaction.guild.name}) A DS3 attempt was launched by {user.display_name}')
+        except:
+            print(f'(DM) A DS3 attempt was launched by {user.display_name}')
+        await interaction.response.send_message(f'Sorry buddy, you still have '
+                                                f'{((3600 - (datetime.datetime.now() - DS3Timer).seconds) / 60).__ceil__()} '
+                                                f'minutes until you can open DS3 again!', ephemeral=True)
 
 @tree.command(
     name="cat",
