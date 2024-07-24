@@ -60,7 +60,7 @@ class Helmets:
     leather_cap = Item("equipment", "Leather Cap", Armor=2, slot="head")
     iron_helmet = Item("equipment", "Iron Helmet", Armor=4, slot="head")
     steel_helm = Item("equipment", "Steel Helm", Armor=6, slot="head")
-    mystical_hood = Item("equipment", "Mystical Hood", Armor=3, slot="head", Resistance=5) #ignore for now, will add later
+    mystical_hood = Item("equipment", "Mystical Hood", Armor=3, slot="head", Resistance=5) #actually we probably shouldnt add resistance
     fishelm = Item("equipment", "Fishelm, The protector of the weak, "
                                 "The Light in the Dark, "
                                 "The Last Hope", Armor=1337, slot="head")
@@ -74,7 +74,7 @@ class Pants:
     leather_leggings = Item("equipment", "Leather Leggings", Armor=1, slot="pants")
     chainmail_leggings = Item("equipment", "Chainmail Leggings", Armor=3, slot="pants")
     steel_greaves = Item("equipment", "Steel Greaves", Armor=5, slot="pants")
-    mystic_trousers = Item("equipment", "Mystic Trousers", Armor=2, slot="pants", Resistance=5) #ignore for now, will add later
+    mystic_trousers = Item("equipment", "Mystic Trousers", Armor=2, slot="pants", Resistance=5) #ignore for now, might add later
 class Boots:
     simple_sandals = Item("equipment", "Simple Sandals", Armor=0, slot="boots")
     leather_boots = Item("equipment", "Leather Boots", Armor=1, slot="boots")

@@ -73,11 +73,20 @@ class Player:  # The most important class in the entire game, has all the stuff 
         self.classes = []
         self.abilities = [] #in case we plan on giving the base player abilities from quests
         # also abilities are dictionaries with the ability name(string) connected to the ability cooldown(int)
+        self.additiveDamageMods = []
+        self.multiplicativeDamageMods = []
 
         if interaction.user.id == 490793326476263434:
             self.inventory.append(new(items.Weapons.divine_blade_of_kfestofil))
         if interaction.user.id == 448145391154626575:
             self.inventory.append(new(items.Helmets.fishelm))
+
+        # I plan on setting up a better way of doing damage calculation
+        # cause the way we're currently doing it is very unoptimal and it's
+        # making me slightly annoyed whenever I look at it
+        # It also might make making weapons with flat damage and such easier
+        def CalculateDmgMultiplier(player:Player):
+            return math.prod(player.multiplicativeDamageMods + [sum(player.additiveDamageMods)+1])
 
 class Mob:
     def __init__(self, mob_type: str, zone: str = "map1", position = [0,0]):
@@ -120,6 +129,7 @@ class Mob:
             print(f"Unknown mob type: {self.mob_type}")
 
         self.health *= self.levelMultiplier
+        self.maxHealth = self.health
         self.attack *= self.levelMultiplier
         self.health = round(self.health)
 
@@ -135,6 +145,8 @@ class Knight:
     def __init__(self):
         self.HostileMob = None
         self.abilities = {"riposte":0,"pommel_strike":0,"grapple":0}
+        self.description = ("A jack of all trades figthter that has strong defensive techniques that allow it to"
+                            "manipulate the fight in their favour while requiring no mana to use")
 
     def Riposte(self, player:Player):
         player.statusEffects["riposte"] = 1
@@ -157,6 +169,9 @@ class Cleric:
     def __init__(self):
         self.HostileMob = None
         self.abilities = {"minor_heal":0,"smite":0}
+        self.description = ("A hybrid melee fighter that uses divine power to both heal and damage."
+                            "uses both intelligence and strength. Benefits from short battles as they have no way"
+                            "to regain mana in combat")
     def Minor_Heal(self, player:Player):
         if player.currentMana >= 80:
             player.currentMana -= 80
@@ -182,6 +197,8 @@ class Mage:
     def __init__(self):
         self.HostileMob = None
         self.abilities = {"frost_strike":0,"mana_bolt":0}
+        self.description = ("A class that manipulates mana in combat, highly fragile. Relies on Intelligence to cast"
+                            "spells.")
     def Frost_Strike(self, player:Player):
         if player.currentMana >= 40:
             player.currentMana -= 40
@@ -204,6 +221,8 @@ class Ranger:
         self.AmmoType = 0
         # 0 = normal ammo, 1 = applies poison, 2 = applies bleed, 3 = applies ignite
         self.abilities = {"ammo_swap":0,"bow_shot":0}
+        self.description = ("A squishy speed-based class, gains the ability to apply different debuffs and inflict"
+                            "high bursts of damage by using Swiftness")
     def Ammo_Swap(self, chosenAmmo):
         self.AmmoType = chosenAmmo
         if self.Swiftness > 0:
@@ -234,6 +253,7 @@ class Rogue:
     def __init__(self):
         self.HostileMob = None
         self.abilities = {"dodge":0,"double_strike":0}
+        self.description = ("The Rogue is a highly efficient killer, using minimal resources to put out a constant stream of damage")
     def Dodge(self, player:Player):
         player.statusEffects["dodge"] +=1
         self.abilities["dodge"] += 21
@@ -242,7 +262,41 @@ class Rogue:
         weaponAttack(player.equipment["weapon"],player,self.HostileMob,ScalingStat=(player.stats["Dex"] + player.stats["Str"])/2,DmgMultiplier=1.2)
         self.abilities["double_strike"] += 2
         return 1
-
+class Brawler:
+    def __init__(self):
+        self.HostileMob = None
+        self.lastAbility = None
+        self.combo = 0
+        self.abilities = {"leg_sweep":0, "hook":0, "grapple":0, "aim_for_the":0}
+        self.description = ("The Brawler utilises the versatility of unarmed combat to rush down their opponents while"
+                            "building up their Combo for one big finisher."
+                            "However, beware that hitting enemies with your bare flesh causes damage to you as well.")
+    def Leg_Sweep(self, player:Player):
+        player.currentHealth -= 6
+        self.HostileMob.health -= player.stats["Str"] * (player.stats["Max Health"]/player.currentHealth)
+        self.HostileMob.statusEffects["stun"] += 1
+        self.combo += 1
+        return 1
+    def Hook(self, player:Player):
+        player.currentHealth -= 6
+        self.HostileMob.health -= player.stats["Str"] * (player.stats["Max Health"]/player.currentHealth)
+        self.combo += 1
+        return 1
+    def Grapple(self, player:Player):
+        player.currentHealth -= 6
+        self.HostileMob.statusEffects["stun"] += 1
+        self.HostileMob.statusEffects["disarm"] += 1
+        self.combo += 1
+        return 1
+    def Aim_For_The(self, player:Player, BodyPart:str):
+        if BodyPart == "Head":
+            self.HostileMob.statusEffects["Bleed"] += math.ceil(combo/2)
+        elif BodyPart == "Chest":
+            self.HostileMob.health -= math.floor(combo/2) * (player.stats["Str"] * (player.stats["Max Health"]/player.currentHealth))
+        elif BodyPart == "Heart":
+             self.HostileMob.health -= math.floor(combo/2) * player.stats["Str"] * (self.HostileMob.maxHealth/self.HostileMob.health)
+        self.abilities["aim_for_the"] += 99
+        return 1
 
 Tiles = {  # Dict containing the color mapping to the tile names
     "199a0d" : "grass",
@@ -792,8 +846,9 @@ def combatInitiated(player: Player, hostileEntity):
             dmg = mob.attack
             dmg = takeDamage(player, dmg)
             mob.lastAction = [f"{mob.mob_type.capitalize()} attacked you!", f" it dealt {dmg} damage!"]
-            if not player.statusEffects["Riposte"]:
+            if player.statusEffects["riposte"]:
                 weaponAttack(pWeapon, player, mob, DmgMultiplier=1.5)
+                player.statusEffects["riposte"] = 0
             if not player.alive:
                 print(f"{player.interaction.user.display_name} just got killed")
                 break
