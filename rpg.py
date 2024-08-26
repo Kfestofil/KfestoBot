@@ -477,6 +477,7 @@ def savePlayerData(player: Player):  # Saves all(?) player data into the databas
     stats = json.dumps(player.stats)
     statusEffects = json.dumps(player.statusEffects)
     inventoryItems = []
+    classes = json.dumps(player.classes)
     for i in player.inventory:
         item = {}
         for attr in vars(i):
@@ -492,7 +493,6 @@ def savePlayerData(player: Player):  # Saves all(?) player data into the databas
 
         equipmentItems.update({i: item})
     equipment = json.dumps(equipmentItems)  # format the things ^
-
     def escape_quotes(s: str):  # convert json strings so sql can take them in. By ChatGPT™
         return s.replace('"', '""')
 
@@ -500,16 +500,18 @@ def savePlayerData(player: Player):  # Saves all(?) player data into the databas
     statusEffects = escape_quotes(statusEffects)
     inventory = escape_quotes(inventory)
     equipment = escape_quotes(equipment)
+    classes = escape_quotes(classes)
 
     db = sqlite3.connect("saveData.db")
     cursor = db.cursor()
-    sql = f'''INSERT INTO players (discordID, posX, posY, currentHealth, currentMana, stats, statusEffects, inventory, equipment)
+    sql = f'''INSERT INTO players (discordID, posX, posY, currentHealth, currentMana, stats, statusEffects, inventory, equipment, classes)
           VALUES ({id}, {posX}, {posY}, {currentHealth}, {currentMana}, "{stats}", "{statusEffects}", "{inventory}", "{equipment}")
           ON CONFLICT(discordID) DO UPDATE SET
           posX = {posX}, posY = {posY}, currentHealth = {currentHealth},
           currentMana = {currentMana}, stats = "{stats}",
           statusEffects = "{statusEffects}", inventory = "{inventory}",
-          equipment = "{equipment}"'''
+          equipment = "{equipment}"
+          classes = "{classes}"'''
     cursor.execute(sql)
     db.commit()  # Save into the database ^
 
@@ -532,6 +534,7 @@ def loadPlayerData(player: Player):
         statusEffects = row[6]
         inventory = row[7]
         equipment = row[8]
+        classes = row[9]
         was = True
 
     if was:  # Actually load them into player
@@ -552,6 +555,7 @@ def loadPlayerData(player: Player):
         for item in json.loads(equipment):
             eqItems[item] = Item(**(json.loads(equipment)[item]))
         player.equipment = eqItems
+        player.classes = classes
 
 
 dataMatrix = loadMapFile('Map.bmp', True)
@@ -849,7 +853,7 @@ def combatInitiated(player: Player, hostileEntity):
             if player.statusEffects["riposte"]:
                 weaponAttack(pWeapon, player, mob, DmgMultiplier=1.5)
                 player.statusEffects["riposte"] = 0
-            if not player.alive:
+            if not player.currentHealth > 0:
                 print(f"{player.interaction.user.display_name} just got killed")
                 break
             pTurn = True
