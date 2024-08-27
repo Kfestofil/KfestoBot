@@ -267,7 +267,7 @@ class Brawler:
         self.HostileMob = None
         self.lastAbility = None
         self.combo = 0
-        self.abilities = {"leg_sweep":0, "hook":0, "grapple":0, "aim_for_the":0}
+        self.abilities = {"leg_sweep":0, "hook":0, "grapple":0, "aim_for_the_head":0}
         self.description = ("The Brawler utilises the versatility of unarmed combat to rush down their opponents while"
                             "building up their Combo for one big finisher."
                             "However, beware that hitting enemies with your bare flesh causes damage to you as well.")
