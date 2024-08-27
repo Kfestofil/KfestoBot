@@ -288,14 +288,8 @@ class Brawler:
         self.HostileMob.statusEffects["disarm"] += 1
         self.combo += 1
         return 1
-    def Aim_For_The(self, player:Player, BodyPart:str):
-        if BodyPart == "Head":
-            self.HostileMob.statusEffects["Bleed"] += math.ceil(combo/2)
-        elif BodyPart == "Chest":
-            self.HostileMob.health -= math.floor(combo/2) * (player.stats["Str"] * (player.stats["Max Health"]/player.currentHealth))
-        elif BodyPart == "Heart":
-             self.HostileMob.health -= math.floor(combo/2) * player.stats["Str"] * (self.HostileMob.maxHealth/self.HostileMob.health)
-        self.abilities["aim_for_the"] += 99
+    def Aim_For_The_Head(self, player:Player):
+        self.HostileMob.statusEffects["Bleed"] += math.ceil(self.combo/2)
         return 1
 
 Tiles = {  # Dict containing the color mapping to the tile names
