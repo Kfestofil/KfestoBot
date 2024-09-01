@@ -1,7 +1,9 @@
 import asyncio
 import datetime
 import os
+import random
 import re
+import string
 import time
 import webbrowser
 import discord
@@ -117,40 +119,48 @@ async def on_message(message: discord.Message):  # Fires on all messages in all 
     if content == "what's updog?":
         await channel.send("Nothing, what's up with you?")
 
-    if ("hello" in message.content.lower().split(' ') or
-    "hi" in message.content.lower().split(' ') or
-    "hey" in message.content.lower().split(' ') or
+    if ("hello" in message.content.lower().translate(str.maketrans('', '', string.punctuation)).split((' ')) or
+    "hi" in message.content.lower().translate(str.maketrans('', '', string.punctuation)).split((' ')) or
+    "hey" in message.content.lower().translate(str.maketrans('', '', string.punctuation)).split((' ')) or
+            ("sig" in message.content.lower().translate(str.maketrans('', '', string.punctuation)).split((' ')) and "heil" in message.content.lower().translate(str.maketrans('', '', string.punctuation)).split((' ')))or
     "wsg" in message.content.lower().split(' ')) and not DM:
-        try:
-            await author.timeout(datetime.timedelta(hours=1), reason="They tried to greet other server members, we do not like that >:(")
-            print(f'({servername}) Timeouted {author.display_name} for greeting people')
-        except Exception as error:
-            if str(error) == "403 Forbidden (error code: 50013): Missing Permissions":
-                print(f'({servername}) Could not ban {author.display_name}: No permission')
-            else:
-                print(f'({servername}) Could not ban {author.display_name}: {error}')
+
+
+        # timeout
+        # x = random.randint(1,10)
+        # try:
+        #     await author.timeout(datetime.timedelta(seconds=x), reason="They tried to greet other server members, we do not like that >:(")
+        #     print(f'({servername}) Timeouted {author.display_name} for {x} seconds for greeting people')
+        # except Exception as error:
+        #     if str(error) == "403 Forbidden (error code: 50013): Missing Permissions":
+        #         print(f'({servername}) Could not ban {author.display_name} ({x} seconds): No permission')
+        #     else:
+        #         print(f'({servername}) Could not ban {author.display_name} ({x} seconds): {error}')
+        await channel.send(f"{author.mention} is a fucking meanie, he just said: `{message.content} you fucking retard`")
+        await channel.send("Honestly, truly despicable if you ask me...")
+        await message.delete()
 
     if "kfestobot" in message.content.lower().split(' ') or client.user.mention in message.content:
         await channel.send("Hello :D", reference=message)
 
 
-@client.event  # Basically a spying software xd
-async def on_message_edit(messageA: discord.Message, messageB: discord.Message):
-    if messageA.author.id in ExludedIDs:
-        return
-    author = messageA.author
-    if author == client.user:
-        return
-    servername = messageA.guild.name
-    contentA = messageA.content
-    contentB = messageB.content
-    channel = messageA.channel
-
-    if contentA == contentB:
-        return
-
-    print(f'({servername}) {author.display_name} edited: {contentA} to: {contentB}')
-    await channel.send(f'{author.mention} edited: `{contentA}` to: `{contentB}`')
+# @client.event  # Basically a spying software xd
+# async def on_message_edit(messageA: discord.Message, messageB: discord.Message):
+#     if messageA.author.id in ExludedIDs:
+#         return
+#     author = messageA.author
+#     if author == client.user:
+#         return
+#     servername = messageA.guild.name
+#     contentA = messageA.content
+#     contentB = messageB.content
+#     channel = messageA.channel
+#
+#     if contentA == contentB:
+#         return
+#
+#     print(f'({servername}) {author.display_name} edited: {contentA} to: {contentB}')
+#     await channel.send(f'{author.mention} edited: `{contentA}` to: `{contentB}`')
 
 
 @client.event  # Handle the updates for sendStatusUpdate() and sendLeagueUpdate()
