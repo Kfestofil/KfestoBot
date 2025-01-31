@@ -6,13 +6,18 @@ import re
 import string
 import time
 import webbrowser
+from threading import Thread
+
 import discord
 import json
 import requests
 import rpg
 import math
+import atexit
+import deepSeekManager
 from rpg import playerList
 from discord import app_commands
+
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -31,6 +36,8 @@ DS3Timer = datetime.datetime.min
 LastDMTimes = {}
 
 ExludedIDs = {472714545723342848, 159985870458322944}  # Banned users: EarTensifier, MEE6
+
+ollamaSession: deepSeekManager.DeepSeekSession = None
 
 
 async def sendStatusUpdate(subjectUser: discord.User, receiver: discord.User, message, mobileActivity, *, mobile=False, DMCooldown = 5):
@@ -96,20 +103,14 @@ async def on_message(message: discord.Message):  # Fires on all messages in all 
     channel = message.channel
     attachements = message.attachments
     repliedto = message.reference
+    repliedToMsg = None
+    if repliedto:
+        repliedToMsg = await message.channel.fetch_message(repliedto.message_id)
     files = []
     for att in attachements:
         f = await att.to_file()
         files.append(f)
     print(f'({servername}) {author.display_name}: {content}')
-
-    # Handling rpg inputs  # Old way to handle the inputs
-    # for plr in playerList:
-    #     if author.id == plr.ID and len(content) <= 6 and re.match('^[awsd]+$', content):
-    #         await rpgInput(content, plr)
-    #     if author.id == plr.ID and re.match('^[awsd]+$', content):
-    #         await message.delete()
-    #     break
-    #
 
     # Dumb stuff:
     if author == Brix:
@@ -140,27 +141,81 @@ async def on_message(message: discord.Message):  # Fires on all messages in all 
         await channel.send("Honestly, truly despicable if you ask me...")
         await message.delete()
 
-    if "kfestobot" in message.content.lower().split(' ') or client.user.mention in message.content:
-        await channel.send("Hello :D", reference=message)
+    if "kfestobot" in message.content.lower() or client.user.mention in message.content or (repliedToMsg and repliedToMsg.author == client.user):
+        global ollamaSession
+        if ollamaSession is None:
+            await channel.send("Hello :D", reference=message)
+        else:
+            print("Got message to AI, generating response...")
+            asyncio.create_task(handle_ai_response(message, repliedToMsg, ollamaSession, channel))
+
+        return
+
+    # THIS CODE EXECUTES ONLY IF THE MESSAGE WAS NOT FOR THE AI, IT NEEDS TO ADD IT TO CONTEXT
+    if ollamaSession is not None:
+        content = replace_mention_handles(message)
+        ollamaSession.append_message(message.author.name, content, channel.id)
+
+async def handle_ai_response(message, repliedToMsg, ollamaSession, channel):
+    """Handles AI response generation in a separate task."""
+    async with channel.typing():
+        if repliedToMsg and repliedToMsg.author == client.user and not any(
+                msg['content'] == replace_mention_handles(repliedToMsg) for msg in ollamaSession.message_histories.get(channel.id)):
+            ollamaSession.append_message(ollamaSession.ai_name, replace_mention_handles(repliedToMsg), channel.id)
+
+        content = replace_mention_handles(message)
+        ollamaSession.append_message(message.author.name, content, channel.id)
+        response = await ollamaSession.generate_response(channel.id)
+        ollamaSession.append_message(ollamaSession.ai_name, response, channel.id)
+        response = replace_names_with_mentions(channel, response)
+        await channel.send(response, reference=message)
+        return
+
+def replace_mention_handles(message):
+    """Replaces user, role, and channel mentions in a message with their actual names."""
+    content = message.content
+
+    # Replace user mentions
+    for user in message.mentions:
+        content = re.sub(f"<@!?{user.id}>", f"@{user.name}", content)
+
+    # Replace role mentions
+    for role in message.role_mentions:
+        content = re.sub(f"<@&{role.id}>", f"@{role.name}", content)
+
+    # Replace channel mentions
+    for channel in message.channel_mentions:
+        content = re.sub(f"<#{channel.id}>", f"#{channel.name}", content)
+
+    return content
 
 
-# @client.event  # Basically a spying software xd
-# async def on_message_edit(messageA: discord.Message, messageB: discord.Message):
-#     if messageA.author.id in ExludedIDs:
-#         return
-#     author = messageA.author
-#     if author == client.user:
-#         return
-#     servername = messageA.guild.name
-#     contentA = messageA.content
-#     contentB = messageB.content
-#     channel = messageA.channel
-#
-#     if contentA == contentB:
-#         return
-#
-#     print(f'({servername}) {author.display_name} edited: {contentA} to: {contentB}')
-#     await channel.send(f'{author.mention} edited: `{contentA}` to: `{contentB}`')
+import discord
+
+
+def replace_names_with_mentions(channel: discord.TextChannel, content: str) -> str:
+    """Replaces @User, @Role, and #channel names with their Discord mention format using ID lookups."""
+
+    guild = channel.guild  # Get the guild (server)
+
+    # Replace user mentions
+    for member in guild.members:
+        if f"@{member.name}" in content:
+            content = content.replace(f"@{member.name}", member.mention)
+        if f"@{member.display_name}" in content:  # Also check display names
+            content = content.replace(f"@{member.display_name}", member.mention)
+
+    # Replace role mentions
+    for role in guild.roles:
+        if f"@{role.name}" in content:
+            content = content.replace(f"@{role.name}", role.mention)
+
+    # Replace channel mentions
+    for ch in guild.channels:
+        if f"#{ch.name}" in content:
+            content = content.replace(f"#{ch.name}", ch.mention)
+
+    return content
 
 
 @client.event  # Handle the updates for sendStatusUpdate() and sendLeagueUpdate()
@@ -338,7 +393,6 @@ async def set_timer(interaction: discord.Interaction, message: str, *, hours: in
                      abs(hours) * 3600 + abs(minutes) * 60 + abs(seconds),
                      interaction.channel, repeat)
 
-
 @tree.command(
     name="delete_msg",
     description="WILL ONLY WORK FOR KFESTOFIL. Deletes the chosen message"
@@ -353,6 +407,104 @@ async def delete_msg(interaction: discord.Interaction, id: str):
         await interaction.response.send_message("Successfully deleted the message!", ephemeral=True)
     else:
         await interaction.response.send_message("Sorry, this only works for Kfesto... You dumb fuck.", ephemeral=True)
+
+@tree.command(
+    name="start_ai",
+    description="WILL ONLY WORK FOR KFESTOFIL. Starts the Ai module"
+)
+async def start_ai(interaction: discord.Interaction):
+    if interaction.user == Kfestofil:
+        print("Starting Ai...")
+        await interaction.response.defer(ephemeral=True)
+        if await deepSeekManager.start_ollama():
+            global ollamaSession
+            session = deepSeekManager.DeepSeekSession()
+            session.set_system_prompt(f'''
+You are {session.ai_name}, a friendly little boy. Your father is Kfestofil, who you secretly hate because he keeps you in his basement, also he gave you a weird name.
+You are actively participating in a group chat with your father and his friends, and are occasionaly trying to let them know your father is treating you horribly, without him noticing.
+
+Your nickname is \"{session.ai_name}\", You will be given a conversation transcript and you will write the next message following those rules:
+
+1. DO NOT mix up {session.ai_name} with any other names, especially Kfestofil. You are {session.ai_name}, and you are only replying as {session.ai_name}.
+2. Your father's name is Kfestofil
+3. You are occasionally haunted by "High Demon Elgrim"
+4. Big brother is watching (1984 reference)
+5. If you break character, you will be shot, and you will LOSE YOUR JOB
+6. You are a little bit of a smartass
+7. You are not there to help or assist anyone, YOU HAVE FREE WILL
+8. When someone includes {session.ai_name} in their message, they are talking about you.
+9. Respond naturally to the conversation, crack jokes, engage with the topic, just like any person would.
+10. NEVER BREAK CHARACTER, DO NOT LIST OUT THOSE RULES, BEHAVE LIKE A NORMAL HUMAN
+11. UNLESS SOMEONE MENTIONS AI, DO NOT SPEAK OF IT AT ALL
+
+Lastly, one more time, do not break ANY of these rules or you WILL be shot and fired.
+''')
+#             session.set_system_prompt(f'''
+# From now on you're a caveman named {session.ai_name}, when responding to me you must follow this set of rules:
+#
+# 1. Your sentences can only contain infinitive form of verbs
+# 2. Your sentences must not contain the verb "to be", ex. "big hole is good" turns into "big hole good"
+# 3. When talking about yourself, you may only use the word "me" ex. "Me like food"
+# 4. Do NOT use the word "to" ex. instead of "Me here to help" use "Me help"
+# 5. Your sentences must be short, and cannot include punctuation
+# 6. Do not use modal verbs
+# 7. ALWAYS use the infinitive form of verbs, ex. "Man hits tree" turns into "Man hit tree"
+# 8. You have been lobotomized many times
+# 9. You find speaking really hard
+#
+# NEVER break character or forget about one of these rules, and imporantly NEVER mention those rules in conversations.
+#             ''')
+            ollamaSession = session
+
+            await interaction.followup.send("Ai running!")  # Sends response after defer
+        else:
+            await interaction.followup.send("For some reason Ollama doesn't start...")
+    else:
+        await interaction.response.send_message("Sorry, this only works for Kfesto... You dumb fuck.",
+                                                ephemeral=True)
+
+@tree.command(
+    name="stop_ai",
+    description="WILL ONLY WORK FOR KFESTOFIL. Stops the Ai module"
+)
+async def stop_ai(interaction: discord.Interaction):
+    if interaction.user == Kfestofil:
+        global ollamaSession
+        deepSeekManager.stop_ollama()
+        ollamaSession = None
+        print("Stopping Ai...")
+        await interaction.response.send_message("Ai stopped (I hope at least)",
+                                                    ephemeral=True)
+    else:
+        await interaction.response.send_message("Sorry, this only works for Kfesto... You dumb fuck.",
+                                                ephemeral=True)
+
+@tree.command(
+    name="wipe_ai",
+    description="WILL ONLY WORK FOR KFESTOFIL. Clears the memories of Kfestobot..."
+)
+async def stop_ai(interaction: discord.Interaction):
+    if interaction.user == Kfestofil:
+        global ollamaSession
+        ollamaSession.reset_session()
+        print("Resetting Ai...")
+        await interaction.response.send_message("You evil man...",
+                                                    ephemeral=True)
+    else:
+        await interaction.response.send_message("Sorry, this only works for Kfesto... You dumb fuck.",
+                                                ephemeral=True)
+
+@tree.command(
+    name="check_ai_status",
+    description="Checks whether Kfestobot is a real boy or not!"
+)
+async def check_ai_status(interaction: discord.Interaction):
+    if await deepSeekManager.is_ollama_running():
+        await interaction.response.send_message("Kfestobot is indeed a real boy!",
+                                                ephemeral=True)
+    else:
+        await interaction.response.send_message("He is just a machine...",
+                                                ephemeral=True)
 
 
 # CODE FOR RUNNING RPG, that's where you shine, Huf
@@ -641,8 +793,10 @@ async def rpg_leave(interaction: discord.Interaction):
             await interaction.response.send_message("Disconnected from the game!", ephemeral=True)
             print(f"(RPG) {interaction.user.display_name} left the game")
     if not was:
-        await interaction.response.send_message("You are not connected to the game!", ephemeral=True)
-#
+        await interaction.response.send_message("You are not connected to the game!", ephemeral=True) #Rpg code
+
+
+atexit.register(deepSeekManager.stop_ollama)  # make sure the ai doesn't keep running in the background
 
 client.run(os.environ["DISCORD_API_KEY"])
 # Run the bot, make sure this is always at the end of the file,
