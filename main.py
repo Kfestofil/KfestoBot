@@ -11,6 +11,9 @@ import json
 import requests
 import rpg
 import math
+from GW2TimerModule import GW2EventNotifier, EVENT_NAME_TO_ID
+
+gw2_notifier = GW2EventNotifier()
 from rpg import playerList
 from discord import app_commands
 
@@ -31,6 +34,7 @@ DS3Timer = datetime.datetime.min
 LastDMTimes = {}
 
 ExludedIDs = {472714545723342848, 159985870458322944}  # Banned users: EarTensifier, MEE6
+
 
 
 async def sendStatusUpdate(subjectUser: discord.User, receiver: discord.User, message, mobileActivity, *, mobile=False, DMCooldown = 5):
@@ -80,6 +84,7 @@ async def on_ready():
     })
 
     rpgLoop = asyncio.create_task(rpg.gameServerLoop())
+    gw2Loop = asyncio.create_task(notifier_loop())
 
 @client.event
 async def on_message(message: discord.Message):  # Fires on all messages in all servers
@@ -354,6 +359,88 @@ async def delete_msg(interaction: discord.Interaction, id: str):
     else:
         await interaction.response.send_message("Sorry, this only works for Kfesto... You dumb fuck.", ephemeral=True)
 
+@tree.command(
+    name="gw2_subscribe",
+    description="Subscribe to a GW2 event notification"
+)
+@app_commands.describe(event="The event to subscribe to")
+async def gw2_subscribe(interaction: discord.Interaction, event: str):
+    if event not in EVENT_NAME_TO_ID:
+        await interaction.response.send_message("Invalid event name!", ephemeral=True)
+        return
+    uid = interaction.user.id
+    event_id = EVENT_NAME_TO_ID[event]
+    if uid in gw2_notifier.get_subscribers(event_id):
+        await interaction.response.send_message(f"You are already subscribed to **{event}**!", ephemeral=True)
+        return
+    gw2_notifier.subscribe(uid, event_id)
+    await interaction.response.send_message(f"✅ Subscribed to **{event}**!", ephemeral=True)
+
+@gw2_subscribe.autocomplete('event')
+async def gw2_subscribe_autocomplete(interaction: discord.Interaction, current: str):
+    return [
+        app_commands.Choice(name=name, value=name)
+        for name in EVENT_NAME_TO_ID
+        if current.lower() in name.lower()
+    ][:25]
+
+
+@tree.command(
+    name="gw2_unsubscribe",
+    description="Unsubscribe from a GW2 event notification"
+)
+@app_commands.describe(event="The event to unsubscribe from")
+async def gw2_unsubscribe(interaction: discord.Interaction, event: str):
+    if event not in EVENT_NAME_TO_ID:
+        await interaction.response.send_message("Invalid event name!", ephemeral=True)
+        return
+    uid = interaction.user.id
+    event_id = EVENT_NAME_TO_ID[event]
+    if uid not in gw2_notifier.get_subscribers(event_id):
+        await interaction.response.send_message(f"You are not subscribed to **{event}**!", ephemeral=True)
+        return
+    gw2_notifier.unsubscribe(uid, event_id)
+    await interaction.response.send_message(f"❌ Unsubscribed from **{event}**!", ephemeral=True)
+
+@gw2_unsubscribe.autocomplete('event')
+async def gw2_unsubscribe_autocomplete(interaction: discord.Interaction, current: str):
+    uid = interaction.user.id
+    subscribed_names = [
+        event_id.value
+        for event_id, users in gw2_notifier.subscriptions.items()
+        if uid in users
+    ]
+    return [
+        app_commands.Choice(name=name, value=name)
+        for name in subscribed_names
+        if current.lower() in name.lower()
+    ][:25]
+
+async def notifier_loop():
+    while True:
+        events = gw2_notifier.check_events()
+        for event_id, chatlink, users in events:
+            for uid in users:
+                await send_gw2_update(event_id.value, chatlink, uid)
+        await asyncio.sleep(60)
+
+async def send_gw2_update(name, chatlink, uid):
+    user = client.get_user(uid)
+    if user is None:
+        print(f"(GW2) Could not find user with ID {uid}")
+        return
+    embed = discord.Embed(
+        title=f"🔔 **{name}** Starting Soon!",
+        description=f"`{chatlink}`\nGet your ahh over there!",
+        color=discord.Color.gold(),
+        timestamp=datetime.datetime.now()
+    )
+    embed.set_footer(text="Kfestobot™ GW2 Notifier")
+    try:
+        await user.send(embed=embed)
+        print(f"(GW2) Sent {name} event notification to {user.display_name}")
+    except discord.Forbidden:
+        print(f"(GW2) Could not DM {user.display_name} - DMs are closed")
 
 # CODE FOR RUNNING RPG, that's where you shine, Huf
 class RpgMainButtons(discord.ui.View):

@@ -19,7 +19,7 @@ def new(item: Item):
 
 
 class Player:  # The most important class in the entire game, has all the stuff related to a player in the game
-    def __init__(self, discordID: int, interaction: Interaction, position=[160,46]):  # default pos is 256,256
+    def __init__(self, discordID: int, interaction: Interaction, position=[167,50]):  # default pos is 256,256
         self.screen = "main"  # main, menu[1,2,...], map
         self.awaitingDeletion = False
         self.ID = discordID
